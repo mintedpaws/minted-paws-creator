@@ -34,6 +34,46 @@ const ORB_PATHS = {
 };
 
 // ============================================================
+// Image resize — shrinks to max 1024px before upload
+// Fixes phone uploads (Vercel 4.5MB body limit) and cuts API costs
+// ============================================================
+const MAX_DIMENSION = 1024;
+
+function resizeImage(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+
+      // Only resize if larger than max
+      if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
+        resolve(dataUrl);
+        return;
+      }
+
+      // Scale down proportionally
+      if (width > height) {
+        height = Math.round(height * (MAX_DIMENSION / width));
+        width = MAX_DIMENSION;
+      } else {
+        width = Math.round(width * (MAX_DIMENSION / height));
+        height = MAX_DIMENSION;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Use JPEG at 85% quality for smaller payload
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ============================================================
 // Session token — persists in localStorage, identifies visitor
 // ============================================================
 function getSessionToken() {
@@ -204,15 +244,15 @@ export default function Home() {
     if (!generating) { setProgress(0); return; }
     let p = 0;
     const iv = setInterval(() => {
-      p += Math.random() * 8 + 2;
+      p += Math.random() * 4 + 1;
       if (p > 90) p = 90; // Stays at 90 until real response
       setProgress(p);
     }, 1000);
     return () => clearInterval(iv);
   }, [generating]);
 
-  // ── Photo upload handler ───────────────────────────────
-  const onPhoto = (e) => {
+  // ── Photo upload handler (with resize) ─────────────────
+  const onPhoto = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > 10485760) {
@@ -220,9 +260,15 @@ export default function Home() {
       return;
     }
     const r = new FileReader();
-    r.onload = (ev) => {
-      setPetPhoto(ev.target.result);
-      setError(null);
+    r.onload = async (ev) => {
+      try {
+        // Resize to max 1024px before storing
+        const resized = await resizeImage(ev.target.result);
+        setPetPhoto(resized);
+        setError(null);
+      } catch (err) {
+        setError("Failed to process image. Please try another photo.");
+      }
     };
     r.readAsDataURL(f);
   };
@@ -481,7 +527,7 @@ export default function Home() {
                   <div style={{ width: 220, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, margin: "14px auto 0", overflow: "hidden" }}>
                     <div style={{ height: "100%", background: t?.color, borderRadius: 2, width: `${progress}%`, transition: "width 0.8s ease" }} />
                   </div>
-                  <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.18)", fontFamily: "system-ui,sans-serif", marginTop: 8 }}>Usually takes about 10 seconds</p>
+                  <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.18)", fontFamily: "system-ui,sans-serif", marginTop: 8 }}>Usually takes 30–45 seconds</p>
                 </div>
               </div>
             )}
