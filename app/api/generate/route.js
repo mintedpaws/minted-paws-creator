@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import Replicate from 'replicate';
 import { checkRateLimit, recordGeneration } from '@/lib/rate-limit';
-import { getPromptsForType } from '@/lib/prompts';
+import { getPromptForType } from '@/lib/prompts';
 
 // ---- Config ----
 const MODEL = "bytedance/flux-pulid";
@@ -73,10 +73,10 @@ export async function POST(request) {
     }
 
     // ---- Get prompts for this type ----
-    const prompts = getPromptsForType(type);
+    const promptLines = getPromptForType(type);
 
     // Combine all prompt lines into one string + add anti-text instruction
-    const fullPrompt = prompts.prompt.join(" ") +
+    const fullPrompt = promptLines.join(" ") +
       " Do not include any text, words, letters, numbers, or writing anywhere in the image.";
 
     // ---- Initialize Replicate ----
@@ -85,17 +85,6 @@ export async function POST(request) {
     });
 
     // ---- Call Flux PuLID ----
-    // PuLID key parameters:
-    //   main_face_image: the pet photo (extracts identity features)
-    //   id_weight: how strongly to preserve identity (0-3)
-    //   start_step: when to insert identity (0 = max fidelity, 4 = more editability)
-    //   guidance_scale: prompt adherence (1-10)
-    //
-    // For stylized art (like Pokemon cards), we use:
-    //   start_step: 1 (high fidelity but allows some artistic transformation)
-    //   id_weight: 1.0 (balanced — preserves features without fighting the style)
-    //   guidance_scale: 4 (standard)
-
     const output = await replicate.run(MODEL, {
       input: {
         main_face_image: image,
