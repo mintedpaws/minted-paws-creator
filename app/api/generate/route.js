@@ -84,9 +84,10 @@ export async function POST(request) {
     });
 
     // ---- Call Flux Kontext Pro ----
+    // IMPORTANT: parameter is "input_image" not "image"
     const output = await replicate.run(MODEL, {
       input: {
-        image: image,
+        input_image: image,
         prompt: fullPrompt,
         aspect_ratio: "3:4",
         output_format: "png",
@@ -95,7 +96,7 @@ export async function POST(request) {
       },
     });
 
-    // Kontext Pro returns a URL or array
+    // Kontext Pro returns a FileOutput object
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
