@@ -113,7 +113,7 @@ export async function POST(request) {
         input_images: [image],
         openai_api_key: process.env.OPENAI_API_KEY,
         input_fidelity: "high",
-        aspect_ratio: "3:4",
+        aspect_ratio: "2:3",
         quality: "high",
         output_format: "png",
         output_compression: 100,
