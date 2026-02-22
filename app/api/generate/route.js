@@ -15,7 +15,7 @@ import { checkRateLimit, recordGeneration } from '@/lib/rate-limit';
 import { getPromptForType } from '@/lib/prompts';
 
 // ---- Config ----
-const MODEL = "bytedance/flux-pulid";
+const MODEL = "bytedance/flux-pulid:8baa7ef2255075b46f4d91cd238c21d31181b3e6a864463f967960bb0112525b";
 const VALID_TYPES = ["fire", "water", "grass", "electric", "psychic", "fighting"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
