@@ -3,11 +3,10 @@
 // ------------------------------------------------
 // 1. Accepts a pet photo (base64) + elemental type
 // 2. Rate limits the request
-// 3. Sends to Flux PuLID on Replicate for identity-preserving transformation
+// 3. Sends to Flux Kontext Pro on Replicate for image transformation
 // 4. Returns the generated image URL
 //
-// Model: bytedance/flux-pulid ($0.005/image)
-// Upgrade path: switch to black-forest-labs/flux-kontext-pro for production
+// Model: black-forest-labs/flux-kontext-pro ($0.04-0.05/image)
 
 import { NextResponse } from 'next/server';
 import Replicate from 'replicate';
@@ -15,7 +14,7 @@ import { checkRateLimit, recordGeneration } from '@/lib/rate-limit';
 import { getPromptForType } from '@/lib/prompts';
 
 // ---- Config ----
-const MODEL = "bytedance/flux-pulid:8baa7ef2255075b46f4d91cd238c21d31181b3e6a864463f967960bb0112525b";
+const MODEL = "black-forest-labs/flux-kontext-pro";
 const VALID_TYPES = ["fire", "water", "grass", "electric", "psychic", "fighting"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -73,7 +72,7 @@ export async function POST(request) {
     }
 
     // ---- Get prompts for this type ----
-  const promptText = getPromptForType(type);
+    const promptText = getPromptForType(type);
 
     // Add anti-text instruction
     const fullPrompt = promptText +
@@ -84,28 +83,19 @@ export async function POST(request) {
       auth: process.env.REPLICATE_API_TOKEN,
     });
 
-    // ---- Call Flux PuLID ----
+    // ---- Call Flux Kontext Pro ----
     const output = await replicate.run(MODEL, {
       input: {
-        main_face_image: image,
+        image: image,
         prompt: fullPrompt,
-        negative_prompt: "text, words, letters, numbers, writing, watermark, signature, blurry, bad anatomy, extra limbs, deformed, generic wolf, generic fox, human, cartoon, low quality, worst quality",
-        width: 896,
-        height: 1152,
-        num_steps: 20,
-        start_step: 1,
-        guidance_scale: 4,
-        id_weight: 1.0,
-        true_cfg: 1,
-        max_sequence_length: 256,
-        num_outputs: 1,
-        seed: Math.floor(Math.random() * 999999),
+        aspect_ratio: "3:4",
         output_format: "png",
-        output_quality: 95,
+        safety_tolerance: 2,
+        seed: Math.floor(Math.random() * 999999),
       },
     });
 
-    // PuLID returns an array of URLs
+    // Kontext Pro returns a URL or array
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
