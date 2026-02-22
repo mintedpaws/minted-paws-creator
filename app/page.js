@@ -87,6 +87,69 @@ function getSessionToken() {
 }
 
 // ============================================================
+// Lightbox modal — tap generated image to view full size
+// ============================================================
+function Lightbox({ src, alt, onClose, borderColor }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    // Prevent body scroll while open
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.92)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20, cursor: "zoom-out",
+        animation: "fadeIn 0.2s ease",
+      }}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        style={{
+          position: "absolute", top: 16, right: 16,
+          background: "rgba(255,255,255,0.1)", border: "none",
+          color: "#fff", fontSize: "1.5rem", width: 40, height: 40,
+          borderRadius: "50%", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(8px)",
+        }}
+      >✕</button>
+
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: "90vw",
+          maxHeight: "85vh",
+          objectFit: "contain",
+          borderRadius: 12,
+          border: `3px solid ${borderColor || "#fff"}`,
+          boxShadow: `0 0 40px ${borderColor}66`,
+          cursor: "default",
+        }}
+      />
+
+      <div style={{
+        position: "absolute", bottom: 20,
+        fontSize: "0.7rem", color: "rgba(255,255,255,0.35)",
+        fontFamily: "system-ui,sans-serif",
+      }}>Tap anywhere to close</div>
+    </div>
+  );
+}
+
+// ============================================================
 // Orb component with image + emoji fallback
 // ============================================================
 function ElementOrb({ type, size = 72, selected, onClick }) {
@@ -213,6 +276,7 @@ export default function Home() {
   const [freeRegen, setFreeRegen] = useState(true);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const fileRef = useRef(null);
 
   // ── URL param auto-select ──────────────────────────────
@@ -245,7 +309,7 @@ export default function Home() {
     let p = 0;
     const iv = setInterval(() => {
       p += Math.random() * 4 + 1;
-      if (p > 90) p = 90; // Stays at 90 until real response
+      if (p > 90) p = 90;
       setProgress(p);
     }, 1000);
     return () => clearInterval(iv);
@@ -262,7 +326,6 @@ export default function Home() {
     const r = new FileReader();
     r.onload = async (ev) => {
       try {
-        // Resize to max 1024px before storing
         const resized = await resizeImage(ev.target.result);
         setPetPhoto(resized);
         setError(null);
@@ -299,7 +362,6 @@ export default function Home() {
       }
 
       setProgress(100);
-      // Small delay for the progress bar to fill visually
       await new Promise((r) => setTimeout(r, 500));
       setGeneratedImage(data.imageUrl);
     } catch (err) {
@@ -324,8 +386,6 @@ export default function Home() {
       name: petName,
       image: generatedImage,
     });
-    // In production, this redirects to your Shopify product page
-    // where Customily picks up the URL parameters
     window.location.href = `https://mintedpaws.co/products/custom-card?${params}`;
   };
 
@@ -338,6 +398,7 @@ export default function Home() {
     setGeneratedImage(null);
     setFreeRegen(true);
     setError(null);
+    setLightboxOpen(false);
   };
 
   const t = selectedType;
@@ -345,6 +406,16 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050505", color: "#fff", fontFamily: "'Cinzel',Georgia,serif", position: "relative", overflow: "hidden" }}>
+      {/* Lightbox */}
+      {lightboxOpen && generatedImage && (
+        <Lightbox
+          src={generatedImage}
+          alt={`${petName} ${t?.name} transformation`}
+          onClose={() => setLightboxOpen(false)}
+          borderColor={t?.color}
+        />
+      )}
+
       {/* Ambient glow */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: t ? `radial-gradient(ellipse at 50% 20%, ${t.glow} 0%, transparent 55%)` : "radial-gradient(ellipse at 50% 20%, rgba(212,168,83,0.06) 0%, transparent 55%)", transition: "background 1s ease" }} />
 
@@ -549,8 +620,22 @@ export default function Home() {
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.15em", color: t?.color, marginBottom: 5, fontFamily: "system-ui,sans-serif" }}>After</div>
-                    <div style={{ position: "relative", width: 200, height: 200, borderRadius: 14, overflow: "hidden", border: `3px solid ${t?.color}`, boxShadow: `0 0 30px ${t?.glow}` }}>
+                    <div
+                      onClick={() => setLightboxOpen(true)}
+                      style={{
+                        position: "relative", width: 200, height: 200, borderRadius: 14,
+                        overflow: "hidden", border: `3px solid ${t?.color}`,
+                        boxShadow: `0 0 30px ${t?.glow}`, cursor: "zoom-in",
+                      }}
+                    >
                       <img src={generatedImage} alt="Transformed" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{
+                        position: "absolute", bottom: 6, right: 6,
+                        background: "rgba(0,0,0,0.5)", borderRadius: 12,
+                        padding: "3px 8px", fontSize: "0.55rem",
+                        color: "rgba(255,255,255,0.6)", fontFamily: "system-ui,sans-serif",
+                        backdropFilter: "blur(4px)",
+                      }}>Tap to expand</div>
                     </div>
                   </div>
                 </div>
