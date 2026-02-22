@@ -1,135 +1,145 @@
 // app/api/generate/route.js
-// Server-side API route — the Replicate key NEVER touches the browser
+// Minted Paws Creator — AI Pet Transformation API
+// ------------------------------------------------
+// 1. Accepts a pet photo (base64) + elemental type
+// 2. Rate limits the request
+// 3. Sends to Flux PuLID on Replicate for identity-preserving transformation
+// 4. Returns the generated image URL
 //
-// Flow:
-//   1. Validate request (type, image present)
-//   2. Check rate limits (IP + session)
-//   3. Call Replicate with type-specific prompt
-//   4. Record the generation
-//   5. Return the image URL
-//
-// The frontend calls: POST /api/generate { type, image, sessionToken }
+// Model: bytedance/flux-pulid ($0.005/image)
+// Upgrade path: switch to black-forest-labs/flux-kontext-pro for production
 
-import { NextResponse } from "next/server";
-import Replicate from "replicate";
-import { checkRateLimit, recordGeneration } from "@/lib/rate-limit";
-import { getPromptForType } from "@/lib/prompts";
+import { NextResponse } from 'next/server';
+import Replicate from 'replicate';
+import { checkRateLimit, recordGeneration } from '@/lib/rate-limit';
+import { getPromptsForType } from '@/lib/prompts';
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
-
-// FLUX.1 Kontext Pro model identifier on Replicate
-const MODEL = "black-forest-labs/flux-kontext-pro";
-
-// Valid type IDs
+// ---- Config ----
+const MODEL = "bytedance/flux-pulid";
 const VALID_TYPES = ["fire", "water", "grass", "electric", "psychic", "fighting"];
-
-// Max image size: 10MB base64 ≈ 13.3MB string
-const MAX_IMAGE_SIZE = 14_000_000;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request) {
   try {
-    // ── Parse request ──────────────────────────────────────
     const body = await request.json();
-    const { type, image, sessionToken } = body;
+    const { type, image, sessionId } = body;
 
-    // ── Validate inputs ────────────────────────────────────
+    // ---- Validate type ----
     if (!type || !VALID_TYPES.includes(type)) {
       return NextResponse.json(
-        { error: `Invalid type. Must be one of: ${VALID_TYPES.join(", ")}` },
+        { error: `Invalid type. Valid types: ${VALID_TYPES.join(", ")}` },
         { status: 400 }
       );
     }
 
-    if (!image || !image.startsWith("data:image/")) {
+    // ---- Validate image ----
+    if (!image || !image.startsWith('data:image')) {
       return NextResponse.json(
-        { error: "Image is required (base64 data URI)" },
+        { error: 'Image is required. Submit base64 data only.' },
         { status: 400 }
       );
     }
 
     if (image.length > MAX_IMAGE_SIZE) {
       return NextResponse.json(
-        { error: "Image too large. Please use a photo under 10MB." },
+        { error: 'Image too large. Please use a photo under 5MB.' },
         { status: 400 }
       );
     }
 
-    // ── Rate limit check ───────────────────────────────────
+    // ---- Rate limiting ----
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    const rateCheck = checkRateLimit(ip, sessionToken);
-    if (!rateCheck.allowed) {
+    const rateLimitResult = checkRateLimit(ip, sessionId);
+
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
-        { error: rateCheck.reason },
+        { error: rateLimitResult.reason },
         {
           status: 429,
           headers: {
-            "Retry-After": String(rateCheck.retryAfterSeconds || 60),
+            "Retry-After": String(rateLimitResult.retryAfter || 60),
+            "X-RateLimit-Reset": String(
+              rateLimitResult.retryAfter
+                ? Math.floor(Date.now() / 1000) + rateLimitResult.retryAfter
+                : Math.floor(Date.now() / 1000) + 60
+            ),
           },
         }
       );
     }
 
-    // ── Get prompt for this type ───────────────────────────
-    const prompt = getPromptForType(type);
+    // ---- Get prompts for this type ----
+    const prompts = getPromptsForType(type);
 
-    // ── Call Replicate ─────────────────────────────────────
+    // Combine all prompt lines into one string + add anti-text instruction
+    const fullPrompt = prompts.prompt.join(" ") +
+      " Do not include any text, words, letters, numbers, or writing anywhere in the image.";
+
+    // ---- Initialize Replicate ----
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+
+    // ---- Call Flux PuLID ----
+    // PuLID key parameters:
+    //   main_face_image: the pet photo (extracts identity features)
+    //   id_weight: how strongly to preserve identity (0-3)
+    //   start_step: when to insert identity (0 = max fidelity, 4 = more editability)
+    //   guidance_scale: prompt adherence (1-10)
+    //
+    // For stylized art (like Pokemon cards), we use:
+    //   start_step: 1 (high fidelity but allows some artistic transformation)
+    //   id_weight: 1.0 (balanced — preserves features without fighting the style)
+    //   guidance_scale: 4 (standard)
+
     const output = await replicate.run(MODEL, {
       input: {
-        prompt: prompt,
-        input_image: image,
-        // Kontext Pro parameters
-        aspect_ratio: "3:4",       // Trading card proportions
-        safety_tolerance: 2,        // Moderate safety filter
+        main_face_image: image,
+        prompt: fullPrompt,
+        negative_prompt: "text, words, letters, numbers, writing, watermark, signature, blurry, bad anatomy, extra limbs, deformed, generic wolf, generic fox, human, cartoon, low quality, worst quality",
+        width: 896,
+        height: 1152,
+        num_steps: 20,
+        start_step: 1,
+        guidance_scale: 4,
+        id_weight: 1.0,
+        true_cfg: 1,
+        max_sequence_length: 256,
+        num_outputs: 1,
+        seed: Math.floor(Math.random() * 999999),
         output_format: "png",
         output_quality: 95,
       },
     });
 
-    // output is typically a URL string or array — normalize it
+    // PuLID returns an array of URLs
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
       return NextResponse.json(
-        { error: "AI generation failed. Please try again." },
+        { error: 'AI generation failed. Please try again.' },
         { status: 500 }
       );
     }
 
-    // ── Record successful generation ───────────────────────
-    recordGeneration(ip, sessionToken);
+    // ---- Record successful generation for rate limiting ----
+    recordGeneration(ip, sessionId);
 
-    // ── Return result ──────────────────────────────────────
+    // ---- Return result ----
     return NextResponse.json({
-      success: true,
-      imageUrl: imageUrl,
-      type: type,
+      imageUrl: typeof imageUrl === 'string' ? imageUrl : imageUrl.url(),
+      type,
+      model: MODEL,
     });
-  } catch (err) {
-    console.error("[generate] Error:", err);
 
-    // Handle specific Replicate errors
-    if (err.message?.includes("rate limit")) {
-      return NextResponse.json(
-        { error: "AI service is busy. Please wait a moment and try again." },
-        { status: 429 }
-      );
-    }
-
-    if (err.message?.includes("NSFW") || err.message?.includes("safety")) {
-      return NextResponse.json(
-        { error: "Image was flagged by our safety filter. Please try a different photo." },
-        { status: 422 }
-      );
-    }
-
+  } catch (error) {
+    console.error("Generation error:", error);
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      { error: "Failed to generate image. Please try again.", details: error.message },
       { status: 500 }
     );
   }
