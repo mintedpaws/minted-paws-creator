@@ -73,10 +73,10 @@ export async function POST(request) {
     }
 
     // ---- Get prompts for this type ----
-    const promptLines = getPromptForType(type);
+  const promptText = getPromptForType(type);
 
-    // Combine all prompt lines into one string + add anti-text instruction
-    const fullPrompt = promptLines.join(" ") +
+    // Add anti-text instruction
+    const fullPrompt = promptText +
       " Do not include any text, words, letters, numbers, or writing anywhere in the image.";
 
     // ---- Initialize Replicate ----
