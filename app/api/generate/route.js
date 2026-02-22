@@ -105,16 +105,16 @@ export async function POST(request) {
     // Key differences from Kontext Pro:
     //   - input_images (array) instead of input_image (string)
     //   - openai_api_key required (billed to your OpenAI account)
-    //   - input_fidelity "high" preserves pet's face/features
-    //   - No safety_tolerance or seed params
+    //   - input_fidelity "low" for cost savings (test "high" if pet likeness drops)
+    //   - quality "low" for cost savings (still 1024x1536 output, prints fine at 410+ DPI on trading cards)
     const output = await replicate.run(MODEL, {
       input: {
         prompt: fullPrompt,
         input_images: [image],
         openai_api_key: process.env.OPENAI_API_KEY,
-        input_fidelity: "high",
+        input_fidelity: "low",
         aspect_ratio: "2:3",
-        quality: "medium",
+        quality: "low",
         output_format: "png",
         output_compression: 100,
         moderation: "low",
