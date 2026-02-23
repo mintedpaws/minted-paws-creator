@@ -45,13 +45,11 @@ function resizeImage(dataUrl) {
     img.onload = () => {
       let { width, height } = img;
 
-      // Only resize if larger than max
       if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
         resolve(dataUrl);
         return;
       }
 
-      // Scale down proportionally
       if (width > height) {
         height = Math.round(height * (MAX_DIMENSION / width));
         width = MAX_DIMENSION;
@@ -66,7 +64,6 @@ function resizeImage(dataUrl) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Use JPEG at 85% quality for smaller payload
       resolve(canvas.toDataURL("image/jpeg", 0.85));
     };
     img.src = dataUrl;
@@ -215,7 +212,6 @@ export default function Home() {
   const fileRef = useRef(null);
 
   // Gallery: stores all generated images this session
-  // Each entry: { imageUrl, type, typeName, typeColor, timestamp }
   const [gallery, setGallery] = useState([]);
   const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(null);
 
@@ -280,6 +276,8 @@ export default function Home() {
   const selectType = (tp) => {
     setSelectedType(tp);
     setStep(2);
+    // Update URL so the type is shareable / linkable from Shopify
+    window.history.replaceState(null, "", `?type=${tp.id}`);
   };
 
   // — AI Generation — calls our server-side API ——————
@@ -335,9 +333,11 @@ export default function Home() {
     const entry = gallery[idx];
     setSelectedGalleryIdx(idx);
     setGeneratedImage(entry.imageUrl);
-    // Update type to match the gallery image
     const matchType = TYPES.find((t) => t.id === entry.type);
-    if (matchType) setSelectedType(matchType);
+    if (matchType) {
+      setSelectedType(matchType);
+      window.history.replaceState(null, "", `?type=${matchType.id}`);
+    }
   };
 
   // — Proceed to Shopify/Customily ————————————————
@@ -358,6 +358,8 @@ export default function Home() {
     setError(null);
     setGallery([]);
     setSelectedGalleryIdx(null);
+    // Clear URL params
+    window.history.replaceState(null, "", window.location.pathname);
   };
 
   // — Try different type (keep photo, go back to type select) ——
@@ -365,6 +367,7 @@ export default function Home() {
     setGeneratedImage(null);
     setSelectedGalleryIdx(null);
     setStep(1);
+    window.history.replaceState(null, "", window.location.pathname);
   };
 
   const t = selectedType;
@@ -435,7 +438,7 @@ export default function Home() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, background: `${t?.color}10`, border: `1px solid ${t?.color}30`, borderRadius: 50, padding: "5px 16px 5px 6px" }}>
                 <ElementOrb type={t?.id} size={26} selected={false} />
                 <span style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: t?.color, fontWeight: 600 }}>{t?.name} Type</span>
-                <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: "0.65rem", cursor: "pointer", fontFamily: "system-ui,sans-serif", textDecoration: "underline", marginLeft: 2 }}>change</button>
+                <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: "0.65rem", cursor: "pointer", fontFamily: "system-ui,sans-serif", textDecoration: "underline", marginLeft: 2 }}>change</button>
               </div>
             </div>
 
@@ -475,7 +478,7 @@ export default function Home() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24 }}>
-              <button onClick={() => setStep(1)} style={{ background: "none", border: "2px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", padding: "11px 26px", borderRadius: 50, fontSize: "0.82rem", fontFamily: "'Cinzel',serif", cursor: "pointer" }}>BACK</button>
+              <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }} style={{ background: "none", border: "2px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", padding: "11px 26px", borderRadius: 50, fontSize: "0.82rem", fontFamily: "'Cinzel',serif", cursor: "pointer" }}>BACK</button>
               <button onClick={() => petPhoto && setStep(3)} disabled={!petPhoto} style={{
                 background: petPhoto ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)",
                 color: petPhoto ? "#000" : "rgba(255,255,255,0.25)",
