@@ -146,14 +146,6 @@ export async function POST(request) {
     } catch (r2Error) {
       // Log but don't fail — return temp URL as fallback
       console.error("R2 upload failed, using temp URL:", r2Error.message);
-      // DEBUG: include error in response so we can see what went wrong
-      recordGeneration(ip, sessionId);
-      return NextResponse.json({
-        imageUrl: permanentUrl,
-        type,
-        model: MODEL,
-        r2Debug: r2Error.message,
-      });
     }
 
     // ---- Record successful generation for rate limiting ----
