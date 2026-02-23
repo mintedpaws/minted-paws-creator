@@ -106,14 +106,15 @@ export async function POST(request) {
     //   - input_images (array) instead of input_image (string)
     //   - openai_api_key required (billed to your OpenAI account)
     //   - input_fidelity "low" for cost savings (test "high" if pet likeness drops)
-    //   - quality "low" for cost savings (still 1024x1536 output, prints fine at 410+ DPI on trading cards)
+    //   - quality "low" for cost savings (still 1536x1024 output, prints fine at 400+ DPI on trading cards)
+    //   - aspect_ratio "3:2" for landscape output matching card art window
     const output = await replicate.run(MODEL, {
       input: {
         prompt: fullPrompt,
         input_images: [image],
         openai_api_key: process.env.OPENAI_API_KEY,
         input_fidelity: "low",
-        aspect_ratio: "2:3",
+        aspect_ratio: "3:2",
         quality: "low",
         output_format: "png",
         output_compression: 100,
