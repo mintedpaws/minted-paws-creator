@@ -4,16 +4,17 @@
 // 1. Accepts a pet photo (base64) + elemental type
 // 2. Rate limits the request
 // 3. Sends to GPT-Image-1.5 on Replicate for image transformation
-// 4. Returns the generated image URL
+// 4. Uploads the result to Cloudflare R2 for permanent storage
+// 5. Returns the permanent image URL
 //
 // Model: openai/gpt-image-1.5 (billed via OpenAI API key)
-// Upgrade from flux-kontext-pro — better at dramatic transformations,
-// new poses, and "reimagine" tasks vs conservative edits
+// Storage: Cloudflare R2 via images.mintedpaws.co
 
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { checkRateLimit, recordGeneration } from "@/lib/rate-limit";
 import { getPromptForType } from "@/lib/prompts";
+import { uploadToR2 } from "@/lib/r2";
 
 // ---- Config ----
 const MODEL = "openai/gpt-image-1.5";
@@ -102,12 +103,6 @@ export async function POST(request) {
     });
 
     // ---- Call GPT-Image-1.5 ----
-    // Key differences from Kontext Pro:
-    //   - input_images (array) instead of input_image (string)
-    //   - openai_api_key required (billed to your OpenAI account)
-    //   - input_fidelity "low" for cost savings (test "high" if pet likeness drops)
-    //   - quality "low" for cost savings (still 1536x1024 output, prints fine at 400+ DPI on trading cards)
-    //   - aspect_ratio "3:2" for landscape output matching card art window
     const output = await replicate.run(MODEL, {
       input: {
         prompt: fullPrompt,
@@ -123,13 +118,34 @@ export async function POST(request) {
     });
 
     // GPT-Image-1.5 returns an array of image URLs
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+    const tempUrl = Array.isArray(output) ? output[0] : output;
+    const tempImageUrl =
+      typeof tempUrl === "string" ? tempUrl : tempUrl?.url?.();
 
-    if (!imageUrl) {
+    if (!tempImageUrl) {
       return NextResponse.json(
         { error: "AI generation failed. Please try again." },
         { status: 500 }
       );
+    }
+
+    // ---- Upload to R2 for permanent storage ----
+    let permanentUrl = tempImageUrl; // fallback to temp URL if R2 fails
+
+    try {
+      // Fetch the generated image from Replicate's temp URL
+      const imageResponse = await fetch(tempImageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      }
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+      // Upload to R2
+      permanentUrl = await uploadToR2(imageBuffer, type);
+      console.log(`Image saved to R2: ${permanentUrl}`);
+    } catch (r2Error) {
+      // Log but don't fail — return temp URL as fallback
+      console.error("R2 upload failed, using temp URL:", r2Error.message);
     }
 
     // ---- Record successful generation for rate limiting ----
@@ -137,7 +153,7 @@ export async function POST(request) {
 
     // ---- Return result ----
     return NextResponse.json({
-      imageUrl: typeof imageUrl === "string" ? imageUrl : imageUrl.url(),
+      imageUrl: permanentUrl,
       type,
       model: MODEL,
     });
