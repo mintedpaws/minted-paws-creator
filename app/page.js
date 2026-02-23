@@ -87,69 +87,6 @@ function getSessionToken() {
 }
 
 // ============================================================
-// Lightbox modal — tap generated image to view full size
-// ============================================================
-function Lightbox({ src, alt, onClose, borderColor }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    // Prevent body scroll while open
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.92)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20, cursor: "zoom-out",
-        animation: "fadeIn 0.2s ease",
-      }}
-    >
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        style={{
-          position: "absolute", top: 16, right: 16,
-          background: "rgba(255,255,255,0.1)", border: "none",
-          color: "#fff", fontSize: "1.5rem", width: 40, height: 40,
-          borderRadius: "50%", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          backdropFilter: "blur(8px)",
-        }}
-      >✕</button>
-
-      <img
-        src={src}
-        alt={alt}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: "90vw",
-          maxHeight: "85vh",
-          objectFit: "contain",
-          borderRadius: 12,
-          border: `3px solid ${borderColor || "#fff"}`,
-          boxShadow: `0 0 40px ${borderColor}66`,
-          cursor: "default",
-        }}
-      />
-
-      <div style={{
-        position: "absolute", bottom: 20,
-        fontSize: "0.7rem", color: "rgba(255,255,255,0.35)",
-        fontFamily: "system-ui,sans-serif",
-      }}>Tap anywhere to close</div>
-    </div>
-  );
-}
-
-// ============================================================
 // Orb component with image + emoji fallback
 // ============================================================
 function ElementOrb({ type, size = 72, selected, onClick }) {
@@ -269,17 +206,20 @@ export default function Home() {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
   const [petPhoto, setPetPhoto] = useState(null);
-  const [petName, setPetName] = useState("");
   const [generating, setGenerating] = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [generatedImage, setGeneratedImage] = useState(null);
-  const [freeRegen, setFreeRegen] = useState(true);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const fileRef = useRef(null);
 
-  // ── URL param auto-select ──────────────────────────────
+  // Gallery: stores all generated images this session
+  // Each entry: { imageUrl, type, typeName, typeColor, timestamp }
+  const [gallery, setGallery] = useState([]);
+  const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(null);
+
+  // — URL param auto-select ————————————————————
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -294,7 +234,7 @@ export default function Home() {
     } catch (e) {}
   }, []);
 
-  // ── Loading message rotation ───────────────────────────
+  // — Loading message rotation —————————————————
   useEffect(() => {
     if (!generating || !selectedType) return;
     const msgs = LOADING_MESSAGES[selectedType.id];
@@ -303,7 +243,7 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [generating, selectedType]);
 
-  // ── Progress bar animation ─────────────────────────────
+  // — Progress bar animation ———————————————————
   useEffect(() => {
     if (!generating) { setProgress(0); return; }
     let p = 0;
@@ -315,7 +255,7 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [generating]);
 
-  // ── Photo upload handler (with resize) ─────────────────
+  // — Photo upload handler (with resize) —————————
   const onPhoto = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -336,13 +276,21 @@ export default function Home() {
     r.readAsDataURL(f);
   };
 
-  // ── AI Generation — calls our server-side API ──────────
+  // — Type click handler — go straight to step 2 ——————
+  const selectType = (tp) => {
+    setSelectedType(tp);
+    setStep(2);
+  };
+
+  // — AI Generation — calls our server-side API ——————
   const generate = useCallback(async () => {
     if (!selectedType || !petPhoto) return;
 
     setGenerating(true);
     setLoadingIdx(0);
     setError(null);
+    setGeneratedImage(null);
+    setSelectedGalleryIdx(null);
 
     try {
       const response = await fetch("/api/generate", {
@@ -363,7 +311,18 @@ export default function Home() {
 
       setProgress(100);
       await new Promise((r) => setTimeout(r, 500));
+
+      const newEntry = {
+        imageUrl: data.imageUrl,
+        type: selectedType.id,
+        typeName: selectedType.name,
+        typeColor: selectedType.color,
+        timestamp: Date.now(),
+      };
+
       setGeneratedImage(data.imageUrl);
+      setGallery((prev) => [newEntry, ...prev]);
+      setSelectedGalleryIdx(0);
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -371,57 +330,53 @@ export default function Home() {
     }
   }, [selectedType, petPhoto]);
 
-  // ── Regenerate (1 free) ────────────────────────────────
-  const regen = () => {
-    if (!freeRegen) return;
-    setFreeRegen(false);
-    setGeneratedImage(null);
-    generate();
+  // — Select image from gallery ———————————————————
+  const selectFromGallery = (idx) => {
+    const entry = gallery[idx];
+    setSelectedGalleryIdx(idx);
+    setGeneratedImage(entry.imageUrl);
+    // Update type to match the gallery image
+    const matchType = TYPES.find((t) => t.id === entry.type);
+    if (matchType) setSelectedType(matchType);
   };
 
-  // ── Proceed to Shopify/Customily ───────────────────────
+  // — Proceed to Shopify/Customily ————————————————
   const buildCard = () => {
     const params = new URLSearchParams({
       type: selectedType.id,
-      name: petName,
       image: generatedImage,
     });
     window.location.href = `https://mintedpaws.co/products/custom-card?${params}`;
   };
 
-  // ── Reset ──────────────────────────────────────────────
+  // — Reset ————————————————————————————————————
   const reset = () => {
     setStep(1);
     setSelectedType(null);
     setPetPhoto(null);
-    setPetName("");
     setGeneratedImage(null);
-    setFreeRegen(true);
     setError(null);
-    setLightboxOpen(false);
+    setGallery([]);
+    setSelectedGalleryIdx(null);
+  };
+
+  // — Try different type (keep photo, go back to type select) ——
+  const tryDifferentType = () => {
+    setGeneratedImage(null);
+    setSelectedGalleryIdx(null);
+    setStep(1);
   };
 
   const t = selectedType;
-  const canProceed2 = petPhoto && petName.trim().length > 0;
 
   return (
     <div style={{ minHeight: "100vh", background: "#050505", color: "#fff", fontFamily: "'Cinzel',Georgia,serif", position: "relative", overflow: "hidden" }}>
-      {/* Lightbox */}
-      {lightboxOpen && generatedImage && (
-        <Lightbox
-          src={generatedImage}
-          alt={`${petName} ${t?.name} transformation`}
-          onClose={() => setLightboxOpen(false)}
-          borderColor={t?.color}
-        />
-      )}
-
       {/* Ambient glow */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: t ? `radial-gradient(ellipse at 50% 20%, ${t.glow} 0%, transparent 55%)` : "radial-gradient(ellipse at 50% 20%, rgba(212,168,83,0.06) 0%, transparent 55%)", transition: "background 1s ease" }} />
 
       {/* Header */}
       <header style={{ textAlign: "center", padding: "32px 20px 10px", position: "relative", zIndex: 10 }}>
-        <h1 style={{ fontSize: "clamp(1.4rem,4vw,2rem)", background: "linear-gradient(135deg,#f0d68a,#d4a853,#a67c2e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "0.18em", margin: 0, fontWeight: 700 }}>MINTED PAWS</h1>
+        <h1 onClick={reset} style={{ fontSize: "clamp(1.4rem,4vw,2rem)", background: "linear-gradient(135deg,#f0d68a,#d4a853,#a67c2e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "0.18em", margin: 0, fontWeight: 700, cursor: "pointer" }}>MINTED PAWS</h1>
         <p style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", color: "rgba(212,168,83,0.5)", fontSize: "0.78rem", letterSpacing: "0.3em", textTransform: "uppercase", marginTop: 4 }}>Your Pet. Your Card. Your Legend.</p>
       </header>
 
@@ -448,13 +403,13 @@ export default function Home() {
         {step === 1 && (
           <div className="fadeIn">
             <h2 style={{ textAlign: "center", fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Choose Your Type</h2>
-            <p style={{ textAlign: "center", fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 30 }}>Each type gives your pet a unique elemental transformation</p>
+            <p style={{ textAlign: "center", fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 30 }}>Tap a type to get started</p>
 
             <div className="typeGrid">
               {TYPES.map((tp) => {
                 const sel = t?.id === tp.id;
                 return (
-                  <button key={tp.id} onClick={() => setSelectedType(tp)} className="typeCard" style={{
+                  <button key={tp.id} onClick={() => selectType(tp)} className="typeCard" style={{
                     background: sel ? `radial-gradient(ellipse at 50% 30%, ${tp.color}15 0%, transparent 70%)` : "rgba(255,255,255,0.015)",
                     border: sel ? `2px solid ${tp.color}` : "2px solid rgba(255,255,255,0.06)",
                     borderRadius: 18, padding: "22px 10px 18px", cursor: "pointer",
@@ -463,27 +418,12 @@ export default function Home() {
                     position: "relative",
                     boxShadow: sel ? `0 0 30px ${tp.glow}, inset 0 0 20px ${tp.color}06` : "none",
                   }}>
-                    {sel && (
-                      <div style={{ position: "absolute", top: 8, right: 8, width: 20, height: 20, borderRadius: "50%", background: tp.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6rem", color: "#000", fontWeight: 900 }}>✓</div>
-                    )}
                     <ElementOrb type={tp.id} size={72} selected={sel} />
                     <div style={{ fontSize: "0.85rem", fontWeight: 700, color: sel ? tp.color : "rgba(255,255,255,0.7)", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", textTransform: "uppercase", transition: "color 0.3s", marginTop: 2 }}>{tp.name}</div>
                     <div style={{ fontSize: "0.65rem", color: sel ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif", fontStyle: "italic", lineHeight: 1.35, transition: "color 0.3s" }}>{tp.desc}</div>
                   </button>
                 );
               })}
-            </div>
-
-            <div style={{ textAlign: "center", marginTop: 30 }}>
-              <button onClick={() => t && setStep(2)} disabled={!t} style={{
-                background: t ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)",
-                color: t ? "#000" : "rgba(255,255,255,0.25)",
-                border: "none", padding: "14px 48px", borderRadius: 50,
-                fontSize: "0.9rem", fontWeight: 700, fontFamily: "'Cinzel',serif",
-                letterSpacing: "0.12em", cursor: t ? "pointer" : "not-allowed",
-                boxShadow: t ? "0 4px 18px rgba(212,168,83,0.25)" : "none",
-                transition: "all 0.3s",
-              }}>CONTINUE</button>
             </div>
           </div>
         )}
@@ -501,12 +441,6 @@ export default function Home() {
 
             <h2 style={{ textAlign: "center", fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Upload Your Pet</h2>
             <p style={{ textAlign: "center", fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 22 }}>Clear photo, any pet, any angle</p>
-
-            <div style={{ maxWidth: 360, margin: "0 auto 18px" }}>
-              <label style={{ display: "block", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(212,168,83,0.6)", marginBottom: 6, fontFamily: "system-ui,sans-serif" }}>Pet Name</label>
-              <input type="text" value={petName} onChange={(e) => setPetName(e.target.value.slice(0, 20))} placeholder="e.g. Buddy, Luna, Mochi..." maxLength={20} style={{ width: "100%", padding: "12px 16px", background: "rgba(255,255,255,0.03)", border: "2px solid rgba(212,168,83,0.15)", borderRadius: 10, color: "#f0d68a", fontSize: "1rem", fontFamily: "'Cinzel',serif", outline: "none", boxSizing: "border-box" }} />
-              <div style={{ textAlign: "right", fontSize: "0.6rem", color: "rgba(255,255,255,0.15)", fontFamily: "system-ui,sans-serif", marginTop: 3 }}>{petName.length}/20</div>
-            </div>
 
             <div onClick={() => fileRef.current?.click()} style={{
               maxWidth: 360, margin: "0 auto", aspectRatio: "1", borderRadius: 18,
@@ -541,12 +475,12 @@ export default function Home() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24 }}>
-              <button onClick={() => setStep(1)} style={{ background: "none", border: "2px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", padding: "11px 26px", borderRadius: 50, fontSize: "0.82rem", fontFamily: "'Cinzel',serif" }}>BACK</button>
-              <button onClick={() => canProceed2 && setStep(3)} disabled={!canProceed2} style={{
-                background: canProceed2 ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)",
-                color: canProceed2 ? "#000" : "rgba(255,255,255,0.25)",
-                border: "none", padding: "11px 34px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", cursor: canProceed2 ? "pointer" : "not-allowed",
-                boxShadow: canProceed2 ? "0 4px 18px rgba(212,168,83,0.25)" : "none", transition: "all 0.3s",
+              <button onClick={() => setStep(1)} style={{ background: "none", border: "2px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", padding: "11px 26px", borderRadius: 50, fontSize: "0.82rem", fontFamily: "'Cinzel',serif", cursor: "pointer" }}>BACK</button>
+              <button onClick={() => petPhoto && setStep(3)} disabled={!petPhoto} style={{
+                background: petPhoto ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)",
+                color: petPhoto ? "#000" : "rgba(255,255,255,0.25)",
+                border: "none", padding: "11px 34px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", cursor: petPhoto ? "pointer" : "not-allowed",
+                boxShadow: petPhoto ? "0 4px 18px rgba(212,168,83,0.25)" : "none", transition: "all 0.3s",
               }}>CONTINUE</button>
             </div>
           </div>
@@ -560,15 +494,14 @@ export default function Home() {
               <div style={{ textAlign: "center" }}>
                 <h2 style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Ready to Transform</h2>
                 <p style={{ fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 26 }}>
-                  Our AI will turn <strong style={{ color: t?.color }}>{petName}</strong> into a {t?.name} type creature
+                  Our AI will create a <strong style={{ color: t?.color }}>{t?.name}</strong> type creature
                 </p>
 
                 <div style={{ maxWidth: 260, margin: "0 auto 26px", background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: 14, border: `2px solid ${t?.color}20` }}>
-                  <img src={petPhoto} alt={petName} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginBottom: 10 }} />
+                  <img src={petPhoto} alt="Pet" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginBottom: 10 }} />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <ElementOrb type={t?.id} size={22} selected={false} />
-                    <span style={{ fontFamily: "'Cinzel',serif", color: t?.color, fontSize: "0.95rem", fontWeight: 700 }}>{petName}</span>
-                    <span style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif" }}>• {t?.name}</span>
+                    <span style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif" }}>{t?.name} Type</span>
                   </div>
                 </div>
 
@@ -579,9 +512,10 @@ export default function Home() {
                   color: "#000", border: "none", padding: "15px 40px", borderRadius: 50,
                   fontSize: "0.9rem", fontWeight: 700, fontFamily: "'Cinzel',serif",
                   letterSpacing: "0.06em", boxShadow: `0 4px 28px ${t?.glow}`,
-                }}>✨ BRING {petName.toUpperCase()} TO LIFE ✨</button>
+                  cursor: "pointer",
+                }}>✨ TRANSFORM MY PET ✨</button>
 
-                <button onClick={() => setStep(2)} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.7rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline" }}>Go back</button>
+                <button onClick={() => setStep(2)} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.7rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>Go back</button>
               </div>
             )}
 
@@ -606,8 +540,8 @@ export default function Home() {
             {/* Result */}
             {!generating && generatedImage && (
               <div style={{ textAlign: "center" }} className="fadeIn">
-                <h2 style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Meet the New {petName}!</h2>
-                <p style={{ fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 20 }}>Your {t?.name} transformation is ready</p>
+                <h2 style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Your {t?.name} Transformation</h2>
+                <p style={{ fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 20 }}>Tap the image to see it full size</p>
 
                 <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginBottom: 26 }}>
                   <div style={{ textAlign: "center" }}>
@@ -621,40 +555,96 @@ export default function Home() {
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.15em", color: t?.color, marginBottom: 5, fontFamily: "system-ui,sans-serif" }}>After</div>
                     <div
-                      onClick={() => setLightboxOpen(true)}
-                      style={{
-                        position: "relative", width: 200, height: 200, borderRadius: 14,
-                        overflow: "hidden", border: `3px solid ${t?.color}`,
-                        boxShadow: `0 0 30px ${t?.glow}`, cursor: "zoom-in",
-                      }}
+                      onClick={() => setLightbox(generatedImage)}
+                      style={{ position: "relative", width: 200, height: 200, borderRadius: 14, overflow: "hidden", border: `3px solid ${t?.color}`, boxShadow: `0 0 30px ${t?.glow}`, cursor: "pointer" }}
                     >
                       <img src={generatedImage} alt="Transformed" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <div style={{
-                        position: "absolute", bottom: 6, right: 6,
-                        background: "rgba(0,0,0,0.5)", borderRadius: 12,
-                        padding: "3px 8px", fontSize: "0.55rem",
-                        color: "rgba(255,255,255,0.6)", fontFamily: "system-ui,sans-serif",
-                        backdropFilter: "blur(4px)",
-                      }}>Tap to expand</div>
+                      <div style={{ position: "absolute", bottom: 6, right: 0, left: 0, textAlign: "center", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)", fontFamily: "system-ui,sans-serif", backdropFilter: "blur(4px)", background: "rgba(0,0,0,0.4)", padding: "3px 0" }}>Tap to expand</div>
                     </div>
                   </div>
                 </div>
 
+                {/* Action buttons */}
                 <button onClick={buildCard} style={{
                   background: "linear-gradient(135deg,#d4a853,#a67c2e)", color: "#000", border: "none", padding: "15px 42px", borderRadius: 50,
                   fontSize: "0.9rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.1em",
-                  boxShadow: "0 4px 24px rgba(212,168,83,0.3)",
+                  boxShadow: "0 4px 24px rgba(212,168,83,0.3)", cursor: "pointer",
                 }}>BUILD YOUR CARD →</button>
 
-                <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12 }}>
-                  {freeRegen && <button onClick={regen} style={{ background: "none", border: "none", color: "rgba(212,168,83,0.45)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline" }}>🔄 Regenerate (1 free)</button>}
-                  <button onClick={reset} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline" }}>Start over</button>
+                <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+                  <button onClick={generate} style={{ background: "none", border: "none", color: "rgba(212,168,83,0.45)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>🔄 Try again ({t?.name})</button>
+                  <button onClick={tryDifferentType} style={{ background: "none", border: "none", color: "rgba(212,168,83,0.45)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>🔀 Try different type</button>
+                  <button onClick={reset} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>Start over</button>
                 </div>
+
+                {/* ===== GENERATION GALLERY ===== */}
+                {gallery.length > 1 && (
+                  <div style={{ marginTop: 30 }}>
+                    <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.2em", color: "rgba(212,168,83,0.35)", fontFamily: "system-ui,sans-serif", marginBottom: 10 }}>Your Generations ({gallery.length})</div>
+                    <div style={{
+                      display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap",
+                      padding: "12px", background: "rgba(255,255,255,0.015)", borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.04)",
+                    }}>
+                      {gallery.map((entry, idx) => {
+                        const isSelected = selectedGalleryIdx === idx;
+                        const entryType = TYPES.find((tp) => tp.id === entry.type);
+                        return (
+                          <div
+                            key={entry.timestamp}
+                            onClick={() => selectFromGallery(idx)}
+                            style={{
+                              width: 64, height: 64, borderRadius: 10, overflow: "hidden",
+                              border: isSelected ? `2px solid ${entryType?.color}` : "2px solid rgba(255,255,255,0.08)",
+                              cursor: "pointer", position: "relative",
+                              boxShadow: isSelected ? `0 0 16px ${entryType?.glow}` : "none",
+                              transition: "all 0.3s",
+                              opacity: isSelected ? 1 : 0.6,
+                            }}
+                          >
+                            <img src={entry.imageUrl} alt={`Generation ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <div style={{
+                              position: "absolute", bottom: 0, left: 0, right: 0,
+                              background: "rgba(0,0,0,0.6)", padding: "1px 0",
+                              textAlign: "center", fontSize: "0.42rem", color: entryType?.color,
+                              fontFamily: "system-ui,sans-serif", fontWeight: 600,
+                            }}>{entryType?.name}</div>
+                            {isSelected && (
+                              <div style={{
+                                position: "absolute", top: 3, right: 3,
+                                width: 14, height: 14, borderRadius: "50%",
+                                background: entryType?.color, display: "flex",
+                                alignItems: "center", justifyContent: "center",
+                                fontSize: "0.5rem", color: "#000", fontWeight: 900,
+                              }}>✓</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.15)", fontFamily: "system-ui,sans-serif", marginTop: 6 }}>Tap any image to select it for your card</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
       </main>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 9999, cursor: "pointer", padding: 20,
+          }}
+        >
+          <img src={lightbox} alt="Full size" style={{ maxWidth: "95%", maxHeight: "90vh", borderRadius: 12, boxShadow: `0 0 60px ${t?.glow}` }} />
+          <div style={{ position: "absolute", top: 20, right: 20, color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", fontFamily: "system-ui,sans-serif" }}>Tap anywhere to close</div>
+        </div>
+      )}
 
       <footer style={{ textAlign: "center", padding: "14px", borderTop: "1px solid rgba(212,168,83,0.06)", position: "relative", zIndex: 10 }}>
         <p style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.12)", fontFamily: "system-ui,sans-serif" }}>© 2026 Minted Paws · mintedpaws.co</p>
