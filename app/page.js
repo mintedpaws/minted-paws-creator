@@ -342,11 +342,7 @@ export default function Home() {
 
   // — Proceed to Shopify/Customily ————————————————
   const buildCard = () => {
-    const params = new URLSearchParams({
-      type: selectedType.id,
-      image: generatedImage,
-    });
-    window.location.href = `https://mintedpaws.co/products/custom-card?${params}`;
+    window.location.href = `https://mintedpaws.co/products/${selectedType.id}?image=${encodeURIComponent(generatedImage)}`;
   };
 
   // — Reset ————————————————————————————————————
