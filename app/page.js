@@ -211,9 +211,22 @@ export default function Home() {
   const [lightbox, setLightbox] = useState(null);
   const fileRef = useRef(null);
 
-  // Gallery: stores all generated images this session
-  const [gallery, setGallery] = useState([]);
+  // Gallery: stores all generated images, persisted in localStorage
+  const [gallery, setGallery] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("mp_gallery");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(null);
+
+  // — Persist gallery to localStorage ————————————————
+  useEffect(() => {
+    try {
+      localStorage.setItem("mp_gallery", JSON.stringify(gallery));
+    } catch {}
+  }, [gallery]);
 
   // — URL param auto-select ————————————————————
   useEffect(() => {
@@ -276,7 +289,6 @@ export default function Home() {
   const selectType = (tp) => {
     setSelectedType(tp);
     setStep(2);
-    // Update URL so the type is shareable / linkable from Shopify
     window.history.replaceState(null, "", `?type=${tp.id}`);
   };
 
@@ -354,7 +366,7 @@ export default function Home() {
     setError(null);
     setGallery([]);
     setSelectedGalleryIdx(null);
-    // Clear URL params
+    localStorage.removeItem("mp_gallery");
     window.history.replaceState(null, "", window.location.pathname);
   };
 
