@@ -72,7 +72,6 @@ function getSessionToken() {
 // State persistence helpers
 // ============================================================
 function loadPersistedState() {
-  if (typeof window === "undefined") return null;
   try {
     const saved = localStorage.getItem("mp_state");
     return saved ? JSON.parse(saved) : null;
@@ -80,7 +79,6 @@ function loadPersistedState() {
 }
 
 function loadPersistedGallery() {
-  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem("mp_gallery");
     return saved ? JSON.parse(saved) : [];
@@ -147,54 +145,44 @@ function FloatingParticles({ color, active }) {
 // Main Creator Component
 // ============================================================
 export default function Home() {
-  // ---- Restore persisted state on mount ----
-  const restored = loadPersistedState();
-  const restoredGallery = loadPersistedGallery();
-
-  const [step, setStep] = useState(() => restored?.step || 1);
-  const [selectedType, setSelectedType] = useState(() => {
-    if (restored?.typeId) return TYPES.find((t) => t.id === restored.typeId) || null;
-    return null;
-  });
-  const [petPhoto, setPetPhoto] = useState(() => restored?.petPhoto || null);
+  // ---- All state starts with defaults (SSR-safe) ----
+  const [step, setStep] = useState(1);
+  const [selectedType, setSelectedType] = useState(null);
+  const [petPhoto, setPetPhoto] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(0);
-  const [generatedImage, setGeneratedImage] = useState(() => restored?.generatedImage || null);
+  const [generatedImage, setGeneratedImage] = useState(null);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const [lightbox, setLightbox] = useState(null);
   const fileRef = useRef(null);
+  const [gallery, setGallery] = useState([]);
+  const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
 
-  const [gallery, setGallery] = useState(() => restoredGallery);
-  const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(() => {
-    if (restored?.generatedImage && restoredGallery.length > 0) {
-      const idx = restoredGallery.findIndex((e) => e.imageUrl === restored.generatedImage);
-      return idx >= 0 ? idx : null;
+  // ---- Restore persisted state on client mount ----
+  useEffect(() => {
+    const restored = loadPersistedState();
+    const savedGallery = loadPersistedGallery();
+
+    if (restored) {
+      if (restored.step) setStep(restored.step);
+      if (restored.typeId) {
+        const found = TYPES.find((t) => t.id === restored.typeId);
+        if (found) setSelectedType(found);
+      }
+      if (restored.petPhoto) setPetPhoto(restored.petPhoto);
+      if (restored.generatedImage) {
+        setGeneratedImage(restored.generatedImage);
+        if (savedGallery.length > 0) {
+          const idx = savedGallery.findIndex((e) => e.imageUrl === restored.generatedImage);
+          if (idx >= 0) setSelectedGalleryIdx(idx);
+        }
+      }
     }
-    return null;
-  });
+    if (savedGallery.length > 0) setGallery(savedGallery);
 
-  // ---- Persist state on every change ----
-  useEffect(() => {
-    try {
-      localStorage.setItem("mp_state", JSON.stringify({
-        step,
-        typeId: selectedType?.id || null,
-        petPhoto,
-        generatedImage,
-      }));
-    } catch {}
-  }, [step, selectedType, petPhoto, generatedImage]);
-
-  // ---- Persist gallery on every change ----
-  useEffect(() => {
-    try {
-      localStorage.setItem("mp_gallery", JSON.stringify(gallery));
-    } catch {}
-  }, [gallery]);
-
-  // ---- URL param auto-select (overrides restored state) ----
-  useEffect(() => {
+    // URL param override (takes priority over restored state)
     try {
       const params = new URLSearchParams(window.location.search);
       const typeParam = params.get("type");
@@ -203,7 +191,30 @@ export default function Home() {
         if (found) { setSelectedType(found); setStep(2); }
       }
     } catch (e) {}
+
+    setHydrated(true);
   }, []);
+
+  // ---- Persist state on every change (only after hydration) ----
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem("mp_state", JSON.stringify({
+        step,
+        typeId: selectedType?.id || null,
+        petPhoto,
+        generatedImage,
+      }));
+    } catch {}
+  }, [step, selectedType, petPhoto, generatedImage, hydrated]);
+
+  // ---- Persist gallery on every change ----
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem("mp_gallery", JSON.stringify(gallery));
+    } catch {}
+  }, [gallery, hydrated]);
 
   // ---- Loading message rotation ----
   useEffect(() => {
@@ -282,7 +293,7 @@ export default function Home() {
     window.location.href = `https://mintedpaws.co/products/${selectedType.id}?image=${encodeURIComponent(generatedImage)}`;
   };
 
-  // ---- Reset (clears everything) ----
+  // ---- Reset ----
   const reset = () => {
     setStep(1); setSelectedType(null); setPetPhoto(null);
     setGeneratedImage(null); setError(null);
@@ -299,6 +310,15 @@ export default function Home() {
   };
 
   const t = selectedType;
+
+  // Don't render until hydrated to prevent flash of default state
+  if (!hydrated) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#050505", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: "rgba(212,168,83,0.4)", fontFamily: "system-ui,sans-serif", fontSize: "0.85rem" }}>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#050505", color: "#fff", fontFamily: "'Cinzel',Georgia,serif", position: "relative", overflow: "hidden" }}>
