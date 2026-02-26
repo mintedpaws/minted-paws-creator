@@ -11,7 +11,7 @@ const TYPES = [
   { id: "grass", name: "Grass", color: "#32CD32", glow: "rgba(50,205,50,0.4)", desc: "Wild. Curious. One with nature.", icon: "🌿" },
   { id: "electric", name: "Electric", color: "#FFD700", glow: "rgba(255,215,0,0.4)", desc: "Unlimited energy. Never stops.", icon: "⚡" },
   { id: "psychic", name: "Psychic", color: "#9B59B6", glow: "rgba(155,89,182,0.4)", desc: "Mysterious. Judging you. Always.", icon: "🔮" },
-  { id: "fighting", name: "Fighting", color: "#D05028", glow: "rgba(208,80,40,0.4)", desc: "Ready to rumble. Never backs down.", icon: "👊" },
+  { id: "dark", name: "Dark", color: "#2d5a72", glow: "rgba(45,90,114,0.4)", desc: "Silent. Watching. From the shadows.", icon: "🌙" },
 ];
 
 const LOADING_MESSAGES = {
@@ -20,7 +20,7 @@ const LOADING_MESSAGES = {
   grass: ["Calling the wild...", "Channeling nature's energy...", "Growing your legend from the earth...", "Almost there..."],
   electric: ["Charging up...", "Channeling electric energy...", "Sparking your legend to life...", "Almost there..."],
   psychic: ["Opening the third eye...", "Channeling psychic energy...", "Manifesting your legend...", "Almost there..."],
-  fighting: ["Entering the arena...", "Channeling fighting spirit...", "Forging your legend through battle...", "Almost there..."],
+  dark: ["Summoning the shadows...", "Channeling dark energy...", "Forging your legend from the void...", "Almost there..."],
 };
 
 const ORB_PATHS = {
@@ -29,7 +29,7 @@ const ORB_PATHS = {
   grass: "/orbs/grass_orb.png",
   electric: "/orbs/electric_orb.png",
   psychic: "/orbs/psychic_orb.png",
-  fighting: "/orbs/dark_orb.png",
+  dark: "/orbs/dark_orb.png",
 };
 
 // ============================================================
@@ -97,7 +97,7 @@ function ElementOrb({ type, size = 72, selected, onClick }) {
     grass: "radial-gradient(circle at 38% 32%, #90ee90 0%, #32CD32 45%, #1a7a1a 100%)",
     electric: "radial-gradient(circle at 38% 32%, #fff4a3 0%, #FFD700 45%, #b8960f 100%)",
     psychic: "radial-gradient(circle at 38% 32%, #d4a6e8 0%, #9B59B6 45%, #5b2d7a 100%)",
-    fighting: "radial-gradient(circle at 38% 32%, #f08060 0%, #D05028 45%, #7a2010 100%)",
+    dark: "radial-gradient(circle at 38% 32%, #4a8aa8 0%, #2d5a72 45%, #1a3545 100%)",
   };
   return (
     <div onClick={onClick} style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: !imgOk ? gradients[type] : "transparent", fontSize: !imgOk ? size * 0.4 : 0, boxShadow: selected ? `0 0 20px ${tp.color}88, 0 0 40px ${tp.glow}, 0 0 60px ${tp.color}33` : `0 0 8px ${tp.color}22`, transition: "all 0.35s ease", transform: selected ? "scale(1.08)" : "scale(1)", cursor: onClick ? "pointer" : "default", flexShrink: 0 }}>
