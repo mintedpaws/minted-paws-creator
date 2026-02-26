@@ -24,7 +24,7 @@ const VALID_TYPES = [
   "grass",
   "electric",
   "psychic",
-  "fighting",
+  "dark",
 ];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
