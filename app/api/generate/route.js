@@ -4,8 +4,8 @@
 // 1. Accepts a pet photo (base64) + elemental type
 // 2. Rate limits the request
 // 3. Sends to GPT-Image-1.5 on Replicate for image transformation
-// 4. Uploads the result to Cloudflare R2 for permanent storage
-// 5. Returns the permanent image URL
+// 4. Returns the temp image URL immediately for fast display
+// 5. Uploads the result to Cloudflare R2 in the background for permanent storage
 //
 // Model: openai/gpt-image-1.5 (billed via OpenAI API key)
 // Storage: Cloudflare R2 via images.mintedpaws.co
@@ -129,31 +129,26 @@ export async function POST(request) {
       );
     }
 
-    // ---- Upload to R2 for permanent storage ----
-    let permanentUrl = tempImageUrl; // fallback to temp URL if R2 fails
-
-    try {
-      // Fetch the generated image from Replicate's temp URL
-      const imageResponse = await fetch(tempImageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
-      }
-      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-
-      // Upload to R2
-      permanentUrl = await uploadToR2(imageBuffer, type);
-      console.log(`Image saved to R2: ${permanentUrl}`);
-    } catch (r2Error) {
-      // Log but don't fail — return temp URL as fallback
-      console.error("R2 upload failed, using temp URL:", r2Error.message);
-    }
-
     // ---- Record successful generation for rate limiting ----
     recordGeneration(ip, sessionId);
 
-    // ---- Return result ----
+    // ---- Upload to R2 in the background (non-blocking) ----
+    // Return the temp URL to the user immediately for fast display.
+    // R2 upload happens async so the permanent URL is ready for Customily later.
+    fetch(tempImageUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((buf) => uploadToR2(Buffer.from(buf), type))
+      .then((url) => console.log(`R2 background upload complete: ${url}`))
+      .catch((err) =>
+        console.error("R2 background upload failed:", err.message)
+      );
+
+    // ---- Return result immediately with temp URL ----
     return NextResponse.json({
-      imageUrl: permanentUrl,
+      imageUrl: tempImageUrl,
       type,
       model: MODEL,
     });
