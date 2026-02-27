@@ -363,7 +363,7 @@ export default function Home() {
 
       {/* Header */}
       <header style={{ textAlign: "center", padding: "20px 20px 6px", position: "relative", zIndex: 10 }}>
-        <img onClick={reset} src="/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
+        <img onClick={reset} src="/orbs/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
         <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.75rem", letterSpacing: "0.3px", marginTop: 6 }}>Your Pet. Your Card. Your Legend.</p>
       </header>
 
