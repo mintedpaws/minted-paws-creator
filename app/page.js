@@ -33,6 +33,23 @@ const ORB_PATHS = {
 };
 
 // ============================================================
+// Theme constants
+// ============================================================
+const THEME = {
+  bg: "#ffffff",
+  navy: "#1a1a2e",
+  orange: "#E8651A",
+  blue: "#3B82F6",
+  text: "#1a1a2e",
+  textMuted: "#6b7280",
+  textLight: "#9ca3af",
+  border: "rgba(0,0,0,0.06)",
+  cardBg: "#f9f9f9",
+  headingFont: "'Fredoka', sans-serif",
+  bodyFont: "'Outfit', sans-serif",
+};
+
+// ============================================================
 // Image resize
 // ============================================================
 const MAX_DIMENSION = 1024;
@@ -86,7 +103,7 @@ function loadPersistedGallery() {
 }
 
 // ============================================================
-// Orb component
+// Orb component (unchanged — uses real orb images with gradient fallback)
 // ============================================================
 function ElementOrb({ type, size = 72, selected, onClick }) {
   const tp = TYPES.find((t) => t.id === type);
@@ -100,14 +117,14 @@ function ElementOrb({ type, size = 72, selected, onClick }) {
     dark: "radial-gradient(circle at 38% 32%, #4a8aa8 0%, #2d5a72 45%, #1a3545 100%)",
   };
   return (
-    <div onClick={onClick} style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: !imgOk ? gradients[type] : "transparent", fontSize: !imgOk ? size * 0.4 : 0, boxShadow: selected ? `0 0 20px ${tp.color}88, 0 0 40px ${tp.glow}, 0 0 60px ${tp.color}33` : `0 0 8px ${tp.color}22`, transition: "all 0.35s ease", transform: selected ? "scale(1.08)" : "scale(1)", cursor: onClick ? "pointer" : "default", flexShrink: 0 }}>
+    <div onClick={onClick} style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: !imgOk ? gradients[type] : "transparent", fontSize: !imgOk ? size * 0.4 : 0, boxShadow: selected ? `0 4px 20px ${tp.color}33` : `0 2px 8px ${tp.color}15`, transition: "all 0.35s ease", transform: selected ? "scale(1.08)" : "scale(1)", cursor: onClick ? "pointer" : "default", flexShrink: 0 }}>
       {imgOk ? (<img src={ORB_PATHS[type]} alt={tp.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImgOk(false)} />) : (<span style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}>{tp.icon}</span>)}
     </div>
   );
 }
 
 // ============================================================
-// Floating particles
+// Floating particles (kept but adapted for light theme)
 // ============================================================
 function FloatingParticles({ color, active }) {
   const canvasRef = useRef(null);
@@ -129,8 +146,8 @@ function FloatingParticles({ color, active }) {
         p.vx += (dx/dist)*0.08; p.vy += (dy/dist)*0.08; p.vx *= 0.98; p.vy *= 0.98;
         p.x += p.vx; p.y += p.vy;
         const a = Math.max(0, Math.min(1, p.life));
-        ctx.globalAlpha = a*0.7; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
-        ctx.globalAlpha = a*0.1; ctx.beginPath(); ctx.arc(p.x, p.y, p.r*3, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+        ctx.globalAlpha = a*0.5; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+        ctx.globalAlpha = a*0.08; ctx.beginPath(); ctx.arc(p.x, p.y, p.r*3, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
       });
       ctx.globalAlpha = 1;
       animRef.current = requestAnimationFrame(draw);
@@ -138,14 +155,13 @@ function FloatingParticles({ color, active }) {
     draw();
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [color, active]);
-  return (<canvas ref={canvasRef} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, pointerEvents: "none", opacity: active ? 0.7 : 0, transition: "opacity 0.5s" }} />);
+  return (<canvas ref={canvasRef} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, pointerEvents: "none", opacity: active ? 0.5 : 0, transition: "opacity 0.5s" }} />);
 }
 
 // ============================================================
 // Main Creator Component
 // ============================================================
 export default function Home() {
-  // ---- All state starts with defaults (SSR-safe) ----
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
   const [petPhoto, setPetPhoto] = useState(null);
@@ -164,7 +180,6 @@ export default function Home() {
   useEffect(() => {
     const restored = loadPersistedState();
     const savedGallery = loadPersistedGallery();
-
     if (restored) {
       if (restored.step) setStep(restored.step);
       if (restored.typeId) {
@@ -181,8 +196,6 @@ export default function Home() {
       }
     }
     if (savedGallery.length > 0) setGallery(savedGallery);
-
-    // URL param override (takes priority over restored state)
     try {
       const params = new URLSearchParams(window.location.search);
       const typeParam = params.get("type");
@@ -191,29 +204,20 @@ export default function Home() {
         if (found) { setSelectedType(found); setStep(2); }
       }
     } catch (e) {}
-
     setHydrated(true);
   }, []);
 
-  // ---- Persist state on every change (only after hydration) ----
+  // ---- Persist state ----
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem("mp_state", JSON.stringify({
-        step,
-        typeId: selectedType?.id || null,
-        petPhoto,
-        generatedImage,
-      }));
+      localStorage.setItem("mp_state", JSON.stringify({ step, typeId: selectedType?.id || null, petPhoto, generatedImage }));
     } catch {}
   }, [step, selectedType, petPhoto, generatedImage, hydrated]);
 
-  // ---- Persist gallery on every change ----
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      localStorage.setItem("mp_gallery", JSON.stringify(gallery));
-    } catch {}
+    try { localStorage.setItem("mp_gallery", JSON.stringify(gallery)); } catch {}
   }, [gallery, hydrated]);
 
   // ---- Loading message rotation ----
@@ -225,7 +229,7 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [generating, selectedType]);
 
-  // ---- Progress bar animation ----
+  // ---- Progress bar ----
   useEffect(() => {
     if (!generating) { setProgress(0); return; }
     let p = 0;
@@ -233,7 +237,7 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [generating]);
 
-  // ---- Photo upload handler ----
+  // ---- Photo upload ----
   const onPhoto = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -249,7 +253,7 @@ export default function Home() {
     r.readAsDataURL(f);
   };
 
-  // ---- Type click handler ----
+  // ---- Type click ----
   const selectType = (tp) => {
     setSelectedType(tp);
     setStep(2);
@@ -279,7 +283,7 @@ export default function Home() {
     finally { setGenerating(false); }
   }, [selectedType, petPhoto]);
 
-  // ---- Select from gallery ----
+  // ---- Gallery select ----
   const selectFromGallery = (idx) => {
     const entry = gallery[idx];
     setSelectedGalleryIdx(idx);
@@ -311,54 +315,97 @@ export default function Home() {
 
   const t = selectedType;
 
-  // Don't render until hydrated to prevent flash of default state
   if (!hydrated) {
     return (
-      <div style={{ minHeight: "100vh", background: "#050505", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "rgba(212,168,83,0.4)", fontFamily: "system-ui,sans-serif", fontSize: "0.85rem" }}>Loading...</div>
+      <div style={{ minHeight: "100vh", background: THEME.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: THEME.textLight, fontFamily: THEME.bodyFont, fontSize: "0.85rem" }}>Loading...</div>
       </div>
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#050505", color: "#fff", fontFamily: "'Cinzel',Georgia,serif", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: t ? `radial-gradient(ellipse at 50% 20%, ${t.glow} 0%, transparent 55%)` : "radial-gradient(ellipse at 50% 20%, rgba(212,168,83,0.06) 0%, transparent 55%)", transition: "background 1s ease" }} />
+  // ---- Stepper component ----
+  const Stepper = () => (
+    <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "10px 20px 22px", position: "relative", zIndex: 10 }}>
+      {["Type", "Upload", "Transform"].map((label, i) => {
+        const sn = i + 1;
+        const done = step > sn;
+        const active = step === sn;
+        const inactive = step < sn;
+        return (
+          <div key={label} style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: done ? "0.7rem" : "0.7rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                background: done ? THEME.orange : active ? THEME.navy : "#f0f0f0",
+                color: done ? "#fff" : active ? "#fff" : "#ccc",
+                boxShadow: active ? `0 2px 10px ${THEME.navy}33` : done ? `0 2px 10px ${THEME.orange}33` : "none",
+                transition: "all 0.4s"
+              }}>{done ? "✓" : sn}</div>
+              <span style={{
+                fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600,
+                fontFamily: THEME.bodyFont,
+                color: done ? THEME.orange : active ? THEME.navy : "#ccc"
+              }}>{label}</span>
+            </div>
+            {i < 2 && <div style={{
+              width: 36, height: 2, margin: "0 6px", marginBottom: 16, borderRadius: 1,
+              background: done ? THEME.orange : "#eee"
+            }} />}
+          </div>
+        );
+      })}
+    </div>
+  );
 
-      <header style={{ textAlign: "center", padding: "32px 20px 10px", position: "relative", zIndex: 10 }}>
-        <h1 onClick={reset} style={{ fontSize: "clamp(1.4rem,4vw,2rem)", background: "linear-gradient(135deg,#f0d68a,#d4a853,#a67c2e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "0.18em", margin: 0, fontWeight: 700, cursor: "pointer" }}>MINTED PAWS</h1>
-        <p style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", color: "rgba(212,168,83,0.5)", fontSize: "0.78rem", letterSpacing: "0.3em", textTransform: "uppercase", marginTop: 4 }}>Your Pet. Your Card. Your Legend.</p>
+  return (
+    <div style={{ minHeight: "100vh", background: THEME.bg, color: THEME.text, fontFamily: THEME.bodyFont, position: "relative", overflow: "hidden" }}>
+
+      {/* Header */}
+      <header style={{ textAlign: "center", padding: "20px 20px 6px", position: "relative", zIndex: 10 }}>
+        <div onClick={reset} style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          background: THEME.bg, border: `2.5px solid ${THEME.navy}`, borderRadius: 10,
+          padding: "5px 14px", cursor: "pointer",
+          fontFamily: THEME.bodyFont, fontWeight: 800, fontSize: "1.1rem", color: THEME.navy
+        }}>
+          <span style={{ color: THEME.orange }}>M</span>inted{" "}
+          <span style={{ color: THEME.blue }}>P</span>aws 🐾
+        </div>
+        <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.68rem", letterSpacing: "0.3px", marginTop: 4 }}>Your Pet. Your Card. Your Legend.</p>
       </header>
 
-      <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "8px 20px 24px", position: "relative", zIndex: 10 }}>
-        {["Choose Type", "Upload Pet", "Transform"].map((label, i) => {
-          const sn = i + 1; const active = step >= sn; const cur = step === sn;
-          return (
-            <div key={label} style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 700, background: active ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)", color: active ? "#000" : "rgba(255,255,255,0.25)", border: cur ? "2px solid #f0d68a" : "2px solid transparent", transition: "all 0.4s", boxShadow: cur ? "0 0 14px rgba(212,168,83,0.25)" : "none" }}>{sn}</div>
-                <span style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.06em", color: active ? "rgba(212,168,83,0.7)" : "rgba(255,255,255,0.15)", fontFamily: "system-ui,sans-serif" }}>{label}</span>
-              </div>
-              {i < 2 && <div style={{ width: 40, height: 2, margin: "0 8px", marginBottom: 16, background: step > sn ? "linear-gradient(90deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.06)" }} />}
-            </div>
-          );
-        })}
-      </div>
+      <Stepper />
 
       <main style={{ maxWidth: 600, margin: "0 auto", padding: "0 16px 50px", position: "relative", zIndex: 10 }}>
 
         {/* ===== STEP 1: Choose Type ===== */}
         {step === 1 && (
           <div className="fadeIn">
-            <h2 style={{ textAlign: "center", fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Choose Your Type</h2>
-            <p style={{ textAlign: "center", fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 30 }}>Tap a type to get started</p>
-            <div className="typeGrid">
+            <h2 style={{ textAlign: "center", fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Choose Your Type</h2>
+            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 24 }}>Tap a type to get started</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }} className="typeGrid">
               {TYPES.map((tp) => {
                 const sel = t?.id === tp.id;
                 return (
-                  <button key={tp.id} onClick={() => selectType(tp)} className="typeCard" style={{ background: sel ? `radial-gradient(ellipse at 50% 30%, ${tp.color}15 0%, transparent 70%)` : "rgba(255,255,255,0.015)", border: sel ? `2px solid ${tp.color}` : "2px solid rgba(255,255,255,0.06)", borderRadius: 18, padding: "22px 10px 18px", cursor: "pointer", transition: "all 0.35s ease", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", boxShadow: sel ? `0 0 30px ${tp.glow}, inset 0 0 20px ${tp.color}06` : "none" }}>
-                    <ElementOrb type={tp.id} size={72} selected={sel} />
-                    <div style={{ fontSize: "0.85rem", fontWeight: 700, color: sel ? tp.color : "rgba(255,255,255,0.7)", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", textTransform: "uppercase", transition: "color 0.3s", marginTop: 2 }}>{tp.name}</div>
-                    <div style={{ fontSize: "0.65rem", color: sel ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif", fontStyle: "italic", lineHeight: 1.35, transition: "color 0.3s" }}>{tp.desc}</div>
+                  <button key={tp.id} onClick={() => selectType(tp)} className="typeCard" style={{
+                    background: sel ? `${tp.color}08` : THEME.cardBg,
+                    border: sel ? `2px solid ${tp.color}` : "2px solid transparent",
+                    borderRadius: 16, padding: "18px 8px 14px", cursor: "pointer",
+                    transition: "all 0.3s ease", textAlign: "center",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                    boxShadow: sel ? `0 4px 20px ${tp.color}18` : "none",
+                    transform: sel ? "translateY(-2px)" : "none"
+                  }}>
+                    <ElementOrb type={tp.id} size={56} selected={sel} />
+                    <div style={{
+                      fontSize: "0.8rem", fontWeight: 600, fontFamily: THEME.headingFont,
+                      color: sel ? tp.color : THEME.navy, letterSpacing: "0.3px", marginTop: 2, transition: "color 0.3s"
+                    }}>{tp.name}</div>
+                    <div style={{
+                      fontSize: "0.6rem", color: sel ? THEME.textMuted : THEME.textLight,
+                      fontStyle: "italic", lineHeight: 1.35, transition: "color 0.3s"
+                    }}>{tp.desc}</div>
                   </button>
                 );
               })}
@@ -369,41 +416,77 @@ export default function Home() {
         {/* ===== STEP 2: Upload Pet ===== */}
         {step === 2 && (
           <div className="fadeIn">
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, background: `${t?.color}10`, border: `1px solid ${t?.color}30`, borderRadius: 50, padding: "5px 16px 5px 6px" }}>
-                <ElementOrb type={t?.id} size={26} selected={false} />
-                <span style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: t?.color, fontWeight: 600 }}>{t?.name} Type</span>
-                <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: "0.65rem", cursor: "pointer", fontFamily: "system-ui,sans-serif", textDecoration: "underline", marginLeft: 2 }}>change</button>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: `${t?.color}08`, border: `1px solid ${t?.color}20`,
+                borderRadius: 50, padding: "4px 14px 4px 5px"
+              }}>
+                <ElementOrb type={t?.id} size={22} selected={false} />
+                <span style={{ fontSize: "0.78rem", color: t?.color, fontWeight: 600 }}>{t?.name} Type</span>
+                <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }}
+                  style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.62rem", cursor: "pointer", textDecoration: "underline", marginLeft: 2 }}>change</button>
               </div>
             </div>
-            <h2 style={{ textAlign: "center", fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Upload Your Pet</h2>
-            <p style={{ textAlign: "center", fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 22 }}>Clear photo, any pet, any angle</p>
-            <div onClick={() => fileRef.current?.click()} style={{ maxWidth: 360, margin: "0 auto", aspectRatio: "1", borderRadius: 18, border: petPhoto ? "none" : `3px dashed ${t?.color}22`, background: petPhoto ? "none" : "rgba(255,255,255,0.015)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", position: "relative" }}>
+
+            <h2 style={{ textAlign: "center", fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Upload Your Pet</h2>
+            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 20 }}>Clear photo, any pet, any angle</p>
+
+            <div onClick={() => fileRef.current?.click()} style={{
+              maxWidth: 340, margin: "0 auto", aspectRatio: "1", borderRadius: 20,
+              border: petPhoto ? "none" : `2.5px dashed ${t?.color}20`,
+              background: petPhoto ? "none" : THEME.cardBg,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", overflow: "hidden", position: "relative",
+              transition: "all 0.3s"
+            }}>
               {petPhoto ? (
                 <>
-                  <img src={petPhoto} alt="Pet" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 18 }} />
-                  <div style={{ position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.6)", color: "#f0d68a", padding: "5px 12px", borderRadius: 16, fontSize: "0.65rem", fontFamily: "system-ui,sans-serif", backdropFilter: "blur(8px)" }}>Tap to change</div>
+                  <img src={petPhoto} alt="Pet" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 20 }} />
+                  <div style={{
+                    position: "absolute", bottom: 10, right: 10,
+                    background: "rgba(255,255,255,0.9)", color: THEME.navy,
+                    padding: "4px 12px", borderRadius: 16, fontSize: "0.62rem", fontWeight: 600,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)", backdropFilter: "blur(8px)"
+                  }}>Tap to change</div>
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: "2.2rem", marginBottom: 10, opacity: 0.22 }}>📸</div>
-                  <div style={{ color: "rgba(212,168,83,0.4)", fontSize: "0.85rem", fontFamily: "system-ui,sans-serif" }}>Tap to upload a photo</div>
-                  <div style={{ color: "rgba(255,255,255,0.14)", fontSize: "0.68rem", fontFamily: "system-ui,sans-serif", marginTop: 4 }}>JPG, PNG — max 10MB</div>
+                  <div style={{ fontSize: "2.2rem", marginBottom: 10, opacity: 0.25 }}>📸</div>
+                  <div style={{ color: THEME.textMuted, fontSize: "0.85rem" }}>Tap to upload a photo</div>
+                  <div style={{ color: THEME.textLight, fontSize: "0.68rem", marginTop: 4 }}>JPG, PNG — max 10MB</div>
                 </>
               )}
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onPhoto} style={{ display: "none" }} />
             </div>
-            {error && <p style={{ textAlign: "center", color: "#ff6b6b", fontSize: "0.78rem", fontFamily: "system-ui,sans-serif", marginTop: 10 }}>{error}</p>}
-            <div style={{ maxWidth: 360, margin: "14px auto 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
+
+            {error && <p style={{ textAlign: "center", color: "#ef4444", fontSize: "0.78rem", marginTop: 10 }}>{error}</p>}
+
+            <div style={{ maxWidth: 340, margin: "12px auto 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
               {["Clear face visible", "Good lighting", "Not blurry", "Any pet works"].map((tip) => (
-                <div key={tip} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.62rem", color: "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif" }}>
-                  <span style={{ color: `${t?.color}55` }}>✓</span> {tip}
+                <div key={tip} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.6rem", color: THEME.textLight }}>
+                  <span style={{ color: `${t?.color}88`, fontWeight: 700 }}>✓</span> {tip}
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24 }}>
-              <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }} style={{ background: "none", border: "2px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", padding: "11px 26px", borderRadius: 50, fontSize: "0.82rem", fontFamily: "'Cinzel',serif", cursor: "pointer" }}>BACK</button>
-              <button onClick={() => petPhoto && setStep(3)} disabled={!petPhoto} style={{ background: petPhoto ? "linear-gradient(135deg,#d4a853,#a67c2e)" : "rgba(255,255,255,0.04)", color: petPhoto ? "#000" : "rgba(255,255,255,0.25)", border: "none", padding: "11px 34px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", cursor: petPhoto ? "pointer" : "not-allowed", boxShadow: petPhoto ? "0 4px 18px rgba(212,168,83,0.25)" : "none", transition: "all 0.3s" }}>CONTINUE</button>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 22 }}>
+              <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }}
+                style={{
+                  background: "none", border: `2px solid #e8e8e8`, color: THEME.textMuted,
+                  padding: "10px 24px", borderRadius: 14, fontSize: "0.82rem", fontFamily: THEME.headingFont,
+                  fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
+                }}>Back</button>
+              <button onClick={() => petPhoto && setStep(3)} disabled={!petPhoto}
+                style={{
+                  background: petPhoto ? THEME.navy : "#e0e0e0",
+                  color: petPhoto ? "#fff" : "#aaa",
+                  border: "none", padding: "11px 30px", borderRadius: 14,
+                  fontSize: "0.82rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  cursor: petPhoto ? "pointer" : "not-allowed",
+                  boxShadow: petPhoto ? `0 4px 16px ${THEME.navy}22` : "none",
+                  transition: "all 0.3s"
+                }}>Continue</button>
             </div>
           </div>
         )}
@@ -411,87 +494,150 @@ export default function Home() {
         {/* ===== STEP 3: Transform ===== */}
         {step === 3 && (
           <div className="fadeIn">
+
+            {/* Pre-generate */}
             {!generating && !generatedImage && (
               <div style={{ textAlign: "center" }}>
-                <h2 style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Ready to Transform</h2>
-                <p style={{ fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 26 }}>Our AI will create a <strong style={{ color: t?.color }}>{t?.name}</strong> type creature</p>
-                <div style={{ maxWidth: 260, margin: "0 auto 26px", background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: 14, border: `2px solid ${t?.color}20` }}>
-                  <img src={petPhoto} alt="Pet" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginBottom: 10 }} />
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <ElementOrb type={t?.id} size={22} selected={false} />
-                    <span style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.22)", fontFamily: "system-ui,sans-serif" }}>{t?.name} Type</span>
+                <h2 style={{ fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Ready to Transform</h2>
+                <p style={{ color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 22 }}>
+                  Our AI will create a <strong style={{ color: t?.color }}>{t?.name}</strong> type creature
+                </p>
+
+                <div style={{
+                  maxWidth: 240, margin: "0 auto 22px", background: THEME.cardBg,
+                  borderRadius: 16, padding: 12, border: `2px solid ${t?.color}15`
+                }}>
+                  <img src={petPhoto} alt="Pet" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginBottom: 8 }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <ElementOrb type={t?.id} size={20} selected={false} />
+                    <span style={{ fontSize: "0.65rem", color: THEME.textLight }}>{t?.name} Type</span>
                   </div>
                 </div>
-                {error && <p style={{ color: "#ff6b6b", fontSize: "0.78rem", fontFamily: "system-ui,sans-serif", marginBottom: 14 }}>{error}</p>}
-                <button onClick={generate} style={{ background: `linear-gradient(135deg,${t?.color},${t?.color}bb)`, color: "#000", border: "none", padding: "15px 40px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.06em", boxShadow: `0 4px 28px ${t?.glow}`, cursor: "pointer" }}>✨ TRANSFORM MY PET ✨</button>
-                <button onClick={() => setStep(2)} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.7rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>Go back</button>
+
+                {error && <p style={{ color: "#ef4444", fontSize: "0.78rem", marginBottom: 14 }}>{error}</p>}
+
+                <button onClick={generate} style={{
+                  background: THEME.orange, color: "#fff", border: "none",
+                  padding: "14px 36px", borderRadius: 14,
+                  fontSize: "0.9rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  boxShadow: `0 4px 20px ${THEME.orange}33`, cursor: "pointer",
+                  transition: "all 0.2s"
+                }}>✨ Transform My Pet ✨</button>
+                <button onClick={() => setStep(2)} style={{
+                  display: "block", margin: "10px auto 0", background: "none", border: "none",
+                  color: THEME.textLight, fontSize: "0.7rem", textDecoration: "underline", cursor: "pointer"
+                }}>Go back</button>
               </div>
             )}
 
+            {/* Generating */}
             {generating && (
-              <div style={{ textAlign: "center", minHeight: 360, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+              <div style={{
+                textAlign: "center", minHeight: 340, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", position: "relative"
+              }}>
                 <FloatingParticles color={t?.color} active={true} />
                 <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ position: "relative", marginBottom: 26, width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <div style={{ position: "absolute", inset: -8, borderRadius: "50%", border: `3px solid ${t?.color}15`, borderTopColor: t?.color, animation: "spin 1.2s linear infinite" }} />
-                    <ElementOrb type={t?.id} size={84} selected={true} />
+                  <div style={{ position: "relative", marginBottom: 22, width: 90, height: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{
+                      position: "absolute", inset: -6, borderRadius: "50%",
+                      border: `3px solid #eee`, borderTopColor: t?.color,
+                      animation: "spin 1.2s linear infinite"
+                    }} />
+                    <ElementOrb type={t?.id} size={78} selected={true} />
                   </div>
-                  <p style={{ fontSize: "1.05rem", color: t?.color, fontFamily: "'Cinzel',serif", minHeight: 34 }}>{LOADING_MESSAGES[t?.id]?.[loadingIdx]}</p>
-                  <div style={{ width: 220, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, margin: "14px auto 0", overflow: "hidden" }}>
+                  <p style={{ fontSize: "1rem", fontFamily: THEME.headingFont, fontWeight: 600, color: t?.color, minHeight: 30 }}>
+                    {LOADING_MESSAGES[t?.id]?.[loadingIdx]}
+                  </p>
+                  <div style={{ width: 200, height: 4, background: "#eee", borderRadius: 2, margin: "12px auto 0", overflow: "hidden" }}>
                     <div style={{ height: "100%", background: t?.color, borderRadius: 2, width: `${progress}%`, transition: "width 0.8s ease" }} />
                   </div>
-                  <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.18)", fontFamily: "system-ui,sans-serif", marginTop: 8 }}>Usually takes 30–45 seconds</p>
+                  <p style={{ fontSize: "0.62rem", color: THEME.textLight, marginTop: 8 }}>Usually takes 30–45 seconds</p>
                 </div>
               </div>
             )}
 
+            {/* Result */}
             {!generating && generatedImage && (
               <div style={{ textAlign: "center" }} className="fadeIn">
-                <h2 style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", color: "#f0d68a", marginBottom: 4 }}>Your {t?.name} Transformation</h2>
-                <p style={{ fontFamily: "system-ui,sans-serif", color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", marginBottom: 20 }}>Tap the image to see it full size</p>
-                <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginBottom: 26 }}>
+                <h2 style={{ fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>
+                  Your {t?.name} Transformation
+                </h2>
+                <p style={{ color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 18 }}>Tap the image to see it full size</p>
+
+                <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginBottom: 22 }}>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.22)", marginBottom: 5, fontFamily: "system-ui,sans-serif" }}>Before</div>
-                    <img src={petPhoto} alt="Original" style={{ width: 130, height: 130, objectFit: "cover", borderRadius: 10, opacity: 0.55, border: "2px solid rgba(255,255,255,0.06)" }} />
+                    <div style={{ fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "1px", color: THEME.textLight, marginBottom: 4, fontWeight: 600 }}>Before</div>
+                    <img src={petPhoto} alt="Original" style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 10, opacity: 0.5, border: "2px solid #eee" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <ElementOrb type={t?.id} size={28} selected={true} />
-                    <div style={{ fontSize: "0.9rem", color: t?.color }}>→</div>
+                    <ElementOrb type={t?.id} size={24} selected={true} />
+                    <div style={{ fontSize: "0.9rem", color: THEME.textLight }}>→</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.15em", color: t?.color, marginBottom: 5, fontFamily: "system-ui,sans-serif" }}>After</div>
-                    <div onClick={() => setLightbox(generatedImage)} style={{ position: "relative", width: 200, height: 200, borderRadius: 14, overflow: "hidden", border: `3px solid ${t?.color}`, boxShadow: `0 0 30px ${t?.glow}`, cursor: "pointer" }}>
+                    <div style={{ fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "1px", color: t?.color, marginBottom: 4, fontWeight: 600 }}>After</div>
+                    <div onClick={() => setLightbox(generatedImage)} style={{
+                      position: "relative", width: 180, height: 180, borderRadius: 14, overflow: "hidden",
+                      border: `3px solid ${t?.color}`, boxShadow: `0 4px 24px ${t?.color}22`, cursor: "pointer"
+                    }}>
                       <img src={generatedImage} alt="Transformed" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <div style={{ position: "absolute", bottom: 6, right: 0, left: 0, textAlign: "center", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)", fontFamily: "system-ui,sans-serif", backdropFilter: "blur(4px)", background: "rgba(0,0,0,0.4)", padding: "3px 0" }}>Tap to expand</div>
+                      <div style={{
+                        position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center",
+                        fontSize: "0.55rem", color: "rgba(255,255,255,0.8)", backdropFilter: "blur(4px)",
+                        background: "rgba(0,0,0,0.35)", padding: "3px 0"
+                      }}>Tap to expand</div>
                     </div>
                   </div>
                 </div>
 
-                <button onClick={buildCard} style={{ background: "linear-gradient(135deg,#d4a853,#a67c2e)", color: "#000", border: "none", padding: "15px 42px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 700, fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", boxShadow: "0 4px 24px rgba(212,168,83,0.3)", cursor: "pointer" }}>BUILD YOUR CARD →</button>
+                <button onClick={buildCard} style={{
+                  background: THEME.navy, color: "#fff", border: "none",
+                  padding: "14px 38px", borderRadius: 14,
+                  fontSize: "0.9rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  boxShadow: `0 4px 20px ${THEME.navy}22`, cursor: "pointer",
+                  transition: "all 0.2s"
+                }}>Build Your Card →</button>
 
                 <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-                  <button onClick={generate} style={{ background: "none", border: "none", color: "rgba(212,168,83,0.45)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>🔄 Try again ({t?.name})</button>
-                  <button onClick={tryDifferentType} style={{ background: "none", border: "none", color: "rgba(212,168,83,0.45)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>🔀 Try different type</button>
-                  <button onClick={reset} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.72rem", fontFamily: "system-ui,sans-serif", textDecoration: "underline", cursor: "pointer" }}>Start over</button>
+                  <button onClick={generate} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>🔄 Try again ({t?.name})</button>
+                  <button onClick={tryDifferentType} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>🔀 Try different type</button>
+                  <button onClick={reset} style={{ background: "none", border: "none", color: "#d4d4d4", fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>Start over</button>
                 </div>
 
                 {gallery.length > 1 && (
-                  <div style={{ marginTop: 30 }}>
-                    <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.2em", color: "rgba(212,168,83,0.35)", fontFamily: "system-ui,sans-serif", marginBottom: 10 }}>Your Generations ({gallery.length})</div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", padding: "12px", background: "rgba(255,255,255,0.015)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div style={{ marginTop: 26 }}>
+                    <div style={{ fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "1.5px", color: THEME.textLight, fontWeight: 600, marginBottom: 8 }}>Your Generations ({gallery.length})</div>
+                    <div style={{
+                      display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap",
+                      padding: 10, background: THEME.cardBg, borderRadius: 14, border: `1px solid ${THEME.border}`
+                    }}>
                       {gallery.map((entry, idx) => {
                         const isSelected = selectedGalleryIdx === idx;
                         const entryType = TYPES.find((tp) => tp.id === entry.type);
                         return (
-                          <div key={entry.timestamp} onClick={() => selectFromGallery(idx)} style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", border: isSelected ? `2px solid ${entryType?.color}` : "2px solid rgba(255,255,255,0.08)", cursor: "pointer", position: "relative", boxShadow: isSelected ? `0 0 16px ${entryType?.glow}` : "none", transition: "all 0.3s", opacity: isSelected ? 1 : 0.6 }}>
+                          <div key={entry.timestamp} onClick={() => selectFromGallery(idx)} style={{
+                            width: 56, height: 56, borderRadius: 8, overflow: "hidden",
+                            border: isSelected ? `2px solid ${entryType?.color}` : "2px solid #eee",
+                            cursor: "pointer", position: "relative",
+                            boxShadow: isSelected ? `0 2px 12px ${entryType?.color}22` : "none",
+                            transition: "all 0.3s", opacity: isSelected ? 1 : 0.55
+                          }}>
                             <img src={entry.imageUrl} alt={`Generation ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.6)", padding: "1px 0", textAlign: "center", fontSize: "0.42rem", color: entryType?.color, fontFamily: "system-ui,sans-serif", fontWeight: 600 }}>{entryType?.name}</div>
-                            {isSelected && (<div style={{ position: "absolute", top: 3, right: 3, width: 14, height: 14, borderRadius: "50%", background: entryType?.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5rem", color: "#000", fontWeight: 900 }}>✓</div>)}
+                            <div style={{
+                              position: "absolute", bottom: 0, left: 0, right: 0,
+                              background: "rgba(255,255,255,0.85)", padding: "1px 0", textAlign: "center",
+                              fontSize: "0.38rem", color: entryType?.color, fontWeight: 700, backdropFilter: "blur(4px)"
+                            }}>{entryType?.name}</div>
+                            {isSelected && (<div style={{
+                              position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%",
+                              background: entryType?.color, display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "0.5rem", color: "#fff", fontWeight: 900
+                            }}>✓</div>)}
                           </div>
                         );
                       })}
                     </div>
-                    <div style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.15)", fontFamily: "system-ui,sans-serif", marginTop: 6 }}>Tap any image to select it for your card</div>
+                    <div style={{ fontSize: "0.52rem", color: "#d4d4d4", marginTop: 6 }}>Tap any image to select it for your card</div>
                   </div>
                 )}
               </div>
@@ -500,16 +646,34 @@ export default function Home() {
         )}
       </main>
 
+      {/* Lightbox */}
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, cursor: "pointer", padding: 20 }}>
+        <div onClick={() => setLightbox(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, cursor: "pointer", padding: 20
+        }}>
           <img src={lightbox} alt="Full size" style={{ maxWidth: "95%", maxHeight: "90vh", borderRadius: 12, boxShadow: `0 0 60px ${t?.glow}` }} />
-          <div style={{ position: "absolute", top: 20, right: 20, color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", fontFamily: "system-ui,sans-serif" }}>Tap anywhere to close</div>
+          <div style={{ position: "absolute", top: 20, right: 20, color: "rgba(255,255,255,0.5)", fontSize: "0.75rem" }}>Tap anywhere to close</div>
         </div>
       )}
 
-      <footer style={{ textAlign: "center", padding: "14px", borderTop: "1px solid rgba(212,168,83,0.06)", position: "relative", zIndex: 10 }}>
-        <p style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.12)", fontFamily: "system-ui,sans-serif" }}>© 2026 Minted Paws · mintedpaws.co</p>
+      {/* Footer */}
+      <footer style={{ textAlign: "center", padding: "14px", borderTop: `1px solid ${THEME.border}`, position: "relative", zIndex: 10 }}>
+        <p style={{ fontSize: "0.6rem", color: THEME.textLight }}>© 2026 Minted Paws · mintedpaws.co</p>
       </footer>
+
+      {/* Global styles */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fadeIn { animation: fadeIn 0.4s ease-out; }
+        .typeGrid { max-width: 400px; margin: 0 auto; }
+        .typeCard:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #ffffff; }
+      `}</style>
     </div>
   );
 }
