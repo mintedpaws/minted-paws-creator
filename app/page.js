@@ -15,12 +15,12 @@ const TYPES = [
 ];
 
 const LOADING_MESSAGES = {
-  fire: ["Igniting the flames...", "Channeling fire energy...", "Forging your legend in flame...", "Almost there..."],
-  water: ["Summoning the tides...", "Channeling water energy...", "Shaping your legend from the deep...", "Almost there..."],
-  grass: ["Calling the wild...", "Channeling nature's energy...", "Growing your legend from the earth...", "Almost there..."],
-  electric: ["Charging up...", "Channeling electric energy...", "Sparking your legend to life...", "Almost there..."],
-  psychic: ["Opening the third eye...", "Channeling psychic energy...", "Manifesting your legend...", "Almost there..."],
-  dark: ["Summoning the shadows...", "Channeling dark energy...", "Forging your legend from the void...", "Almost there..."],
+  fire: ["What? Your pet is evolving!", "The flames are building...", "A fiery aura takes shape...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
+  water: ["What? Your pet is evolving!", "The tides are rising...", "A wave of power crashes through...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
+  grass: ["What? Your pet is evolving!", "The vines are spreading...", "Nature's energy takes root...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
+  electric: ["What? Your pet is evolving!", "The voltage is surging...", "Lightning crackles in the air...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
+  psychic: ["What? Your pet is evolving!", "The mind is awakening...", "Psychic waves ripple outward...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
+  dark: ["What? Your pet is evolving!", "The shadows are gathering...", "Darkness swirls into form...", "Wow, something is happening...", "It's super effective! Evolution incoming..."],
 };
 
 const ORB_PATHS = {
@@ -225,7 +225,7 @@ export default function Home() {
     if (!generating || !selectedType) return;
     const msgs = LOADING_MESSAGES[selectedType.id];
     let i = 0;
-    const iv = setInterval(() => { i = (i + 1) % msgs.length; setLoadingIdx(i); }, 2800);
+    const iv = setInterval(() => { i = (i + 1) % msgs.length; setLoadingIdx(i); }, 4500);
     return () => clearInterval(iv);
   }, [generating, selectedType]);
 
@@ -326,7 +326,7 @@ export default function Home() {
   // ---- Stepper component ----
   const Stepper = () => (
     <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "12px 20px 26px", position: "relative", zIndex: 10 }}>
-      {["Type", "Upload", "Transform"].map((label, i) => {
+      {["Type", "Upload", "Evolve"].map((label, i) => {
         const sn = i + 1;
         const done = step > sn;
         const active = step === sn;
@@ -366,7 +366,7 @@ export default function Home() {
         <a href="https://mintedpaws.co" style={{ textDecoration: "none" }}>
           <img src="/orbs/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
         </a>
-        <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.75rem", letterSpacing: "0.3px", marginTop: 6 }}>Your Pet. Your Card. Your Legend.</p>
+        <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.75rem", letterSpacing: "0.3px", marginTop: 6 }}>Every Pet Deserves an Evolution.</p>
         <a href="https://mintedpaws.co" style={{
           display: "inline-flex", alignItems: "center", gap: 4,
           color: THEME.textLight, fontSize: "0.72rem", fontFamily: THEME.bodyFont,
@@ -494,14 +494,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* ===== STEP 3: Transform ===== */}
+        {/* ===== STEP 3: Evolve ===== */}
         {step === 3 && (
           <div className="fadeIn">
 
             {/* Pre-generate */}
             {!generating && !generatedImage && (
               <div style={{ textAlign: "center" }}>
-                <h2 style={{ fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>Ready to Transform</h2>
+                <h2 style={{ fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>Ready to Evolve</h2>
                 <p style={{ color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 24 }}>
                   Our AI will create a <strong style={{ color: t?.color }}>{t?.name}</strong> type creature
                 </p>
@@ -525,7 +525,7 @@ export default function Home() {
                   fontSize: "1rem", fontWeight: 700, fontFamily: THEME.headingFont,
                   boxShadow: `0 4px 20px ${THEME.orange}33`, cursor: "pointer",
                   transition: "all 0.2s"
-                }}>✨ Transform My Pet ✨</button>
+                }}>✨ Evolve My Pet ✨</button>
                 <button onClick={() => setStep(2)} style={{
                   display: "block", margin: "10px auto 0", background: "none", border: "none",
                   color: THEME.textLight, fontSize: "0.7rem", textDecoration: "underline", cursor: "pointer"
@@ -564,7 +564,7 @@ export default function Home() {
             {!generating && generatedImage && (
               <div style={{ textAlign: "center" }} className="fadeIn">
                 <h2 style={{ fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>
-                  Your {t?.name} Transformation
+                  Your {t?.name} Evolution
                 </h2>
                 <p style={{ color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 22 }}>Tap the image to see it full size</p>
 
