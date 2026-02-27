@@ -363,8 +363,19 @@ export default function Home() {
 
       {/* Header */}
       <header style={{ textAlign: "center", padding: "20px 20px 6px", position: "relative", zIndex: 10 }}>
-        <img onClick={reset} src="/orbs/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
+        <a href="https://mintedpaws.co" style={{ textDecoration: "none" }}>
+          <img src="/orbs/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
+        </a>
         <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.75rem", letterSpacing: "0.3px", marginTop: 6 }}>Your Pet. Your Card. Your Legend.</p>
+        <a href="https://mintedpaws.co" style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          color: THEME.textLight, fontSize: "0.72rem", fontFamily: THEME.bodyFont,
+          textDecoration: "none", marginTop: 6,
+          transition: "color 0.2s"
+        }}
+        onMouseEnter={e => e.target.style.color = THEME.orange}
+        onMouseLeave={e => e.target.style.color = THEME.textLight}
+        >← Back to Store</a>
       </header>
 
       <Stepper />
@@ -652,7 +663,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer style={{ textAlign: "center", padding: "14px", borderTop: `1px solid ${THEME.border}`, position: "relative", zIndex: 10 }}>
-        <p style={{ fontSize: "0.6rem", color: THEME.textLight }}>© 2026 Minted Paws · mintedpaws.co</p>
+        <p style={{ fontSize: "0.6rem", color: THEME.textLight }}>© 2026 Minted Paws · <a href="https://mintedpaws.co" style={{ color: THEME.textLight, textDecoration: "underline" }}>mintedpaws.co</a></p>
       </footer>
 
       {/* Global styles */}
