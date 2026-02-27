@@ -325,7 +325,7 @@ export default function Home() {
 
   // ---- Stepper component ----
   const Stepper = () => (
-    <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "10px 20px 22px", position: "relative", zIndex: 10 }}>
+    <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "12px 20px 26px", position: "relative", zIndex: 10 }}>
       {["Type", "Upload", "Transform"].map((label, i) => {
         const sn = i + 1;
         const done = step > sn;
@@ -333,23 +333,23 @@ export default function Home() {
         const inactive = step < sn;
         return (
           <div key={label} style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
               <div style={{
-                width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: done ? "0.7rem" : "0.7rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "0.78rem", fontWeight: 700, fontFamily: THEME.headingFont,
                 background: done ? THEME.orange : active ? THEME.navy : "#f0f0f0",
                 color: done ? "#fff" : active ? "#fff" : "#ccc",
-                boxShadow: active ? `0 2px 10px ${THEME.navy}33` : done ? `0 2px 10px ${THEME.orange}33` : "none",
+                boxShadow: active ? `0 2px 12px ${THEME.navy}33` : done ? `0 2px 12px ${THEME.orange}33` : "none",
                 transition: "all 0.4s"
               }}>{done ? "✓" : sn}</div>
               <span style={{
-                fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600,
+                fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600,
                 fontFamily: THEME.bodyFont,
                 color: done ? THEME.orange : active ? THEME.navy : "#ccc"
               }}>{label}</span>
             </div>
             {i < 2 && <div style={{
-              width: 36, height: 2, margin: "0 6px", marginBottom: 16, borderRadius: 1,
+              width: 50, height: 2, margin: "0 10px", marginBottom: 18, borderRadius: 1,
               background: done ? THEME.orange : "#eee"
             }} />}
           </div>
@@ -363,47 +363,39 @@ export default function Home() {
 
       {/* Header */}
       <header style={{ textAlign: "center", padding: "20px 20px 6px", position: "relative", zIndex: 10 }}>
-        <div onClick={reset} style={{
-          display: "inline-flex", alignItems: "center", gap: 4,
-          background: THEME.bg, border: `2.5px solid ${THEME.navy}`, borderRadius: 10,
-          padding: "5px 14px", cursor: "pointer",
-          fontFamily: THEME.bodyFont, fontWeight: 800, fontSize: "1.1rem", color: THEME.navy
-        }}>
-          <span style={{ color: THEME.orange }}>M</span>inted{" "}
-          <span style={{ color: THEME.blue }}>P</span>aws 🐾
-        </div>
-        <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.68rem", letterSpacing: "0.3px", marginTop: 4 }}>Your Pet. Your Card. Your Legend.</p>
+        <img onClick={reset} src="/logo-badge.png" alt="Minted Paws" style={{ height: 48, cursor: "pointer" }} />
+        <p style={{ fontFamily: THEME.bodyFont, color: THEME.textLight, fontSize: "0.75rem", letterSpacing: "0.3px", marginTop: 6 }}>Your Pet. Your Card. Your Legend.</p>
       </header>
 
       <Stepper />
 
-      <main style={{ maxWidth: 600, margin: "0 auto", padding: "0 16px 50px", position: "relative", zIndex: 10 }}>
+      <main style={{ maxWidth: 520, margin: "0 auto", padding: "0 20px 50px", position: "relative", zIndex: 10 }}>
 
         {/* ===== STEP 1: Choose Type ===== */}
         {step === 1 && (
           <div className="fadeIn">
-            <h2 style={{ textAlign: "center", fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Choose Your Type</h2>
-            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 24 }}>Tap a type to get started</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }} className="typeGrid">
+            <h2 style={{ textAlign: "center", fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>Choose Your Type</h2>
+            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 26 }}>Tap a type to get started</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="typeGrid">
               {TYPES.map((tp) => {
                 const sel = t?.id === tp.id;
                 return (
                   <button key={tp.id} onClick={() => selectType(tp)} className="typeCard" style={{
                     background: sel ? `${tp.color}08` : THEME.cardBg,
                     border: sel ? `2px solid ${tp.color}` : "2px solid transparent",
-                    borderRadius: 16, padding: "18px 8px 14px", cursor: "pointer",
+                    borderRadius: 18, padding: "20px 10px 16px", cursor: "pointer",
                     transition: "all 0.3s ease", textAlign: "center",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
                     boxShadow: sel ? `0 4px 20px ${tp.color}18` : "none",
                     transform: sel ? "translateY(-2px)" : "none"
                   }}>
-                    <ElementOrb type={tp.id} size={56} selected={sel} />
+                    <ElementOrb type={tp.id} size={64} selected={sel} />
                     <div style={{
-                      fontSize: "0.8rem", fontWeight: 600, fontFamily: THEME.headingFont,
+                      fontSize: "0.9rem", fontWeight: 600, fontFamily: THEME.headingFont,
                       color: sel ? tp.color : THEME.navy, letterSpacing: "0.3px", marginTop: 2, transition: "color 0.3s"
                     }}>{tp.name}</div>
                     <div style={{
-                      fontSize: "0.6rem", color: sel ? THEME.textMuted : THEME.textLight,
+                      fontSize: "0.68rem", color: sel ? THEME.textMuted : THEME.textLight,
                       fontStyle: "italic", lineHeight: 1.35, transition: "color 0.3s"
                     }}>{tp.desc}</div>
                   </button>
@@ -429,8 +421,8 @@ export default function Home() {
               </div>
             </div>
 
-            <h2 style={{ textAlign: "center", fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Upload Your Pet</h2>
-            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 20 }}>Clear photo, any pet, any angle</p>
+            <h2 style={{ textAlign: "center", fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>Upload Your Pet</h2>
+            <p style={{ textAlign: "center", color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 22 }}>Clear photo, any pet, any angle</p>
 
             <div onClick={() => fileRef.current?.click()} style={{
               maxWidth: 340, margin: "0 auto", aspectRatio: "1", borderRadius: 20,
@@ -470,19 +462,19 @@ export default function Home() {
               ))}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 22 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 24 }}>
               <button onClick={() => { setStep(1); window.history.replaceState(null, "", window.location.pathname); }}
                 style={{
                   background: "none", border: `2px solid #e8e8e8`, color: THEME.textMuted,
-                  padding: "10px 24px", borderRadius: 14, fontSize: "0.82rem", fontFamily: THEME.headingFont,
+                  padding: "12px 28px", borderRadius: 14, fontSize: "0.9rem", fontFamily: THEME.headingFont,
                   fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
                 }}>Back</button>
               <button onClick={() => petPhoto && setStep(3)} disabled={!petPhoto}
                 style={{
                   background: petPhoto ? THEME.navy : "#e0e0e0",
                   color: petPhoto ? "#fff" : "#aaa",
-                  border: "none", padding: "11px 30px", borderRadius: 14,
-                  fontSize: "0.82rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  border: "none", padding: "12px 34px", borderRadius: 14,
+                  fontSize: "0.9rem", fontWeight: 700, fontFamily: THEME.headingFont,
                   cursor: petPhoto ? "pointer" : "not-allowed",
                   boxShadow: petPhoto ? `0 4px 16px ${THEME.navy}22` : "none",
                   transition: "all 0.3s"
@@ -498,13 +490,13 @@ export default function Home() {
             {/* Pre-generate */}
             {!generating && !generatedImage && (
               <div style={{ textAlign: "center" }}>
-                <h2 style={{ fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>Ready to Transform</h2>
-                <p style={{ color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 22 }}>
+                <h2 style={{ fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>Ready to Transform</h2>
+                <p style={{ color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 24 }}>
                   Our AI will create a <strong style={{ color: t?.color }}>{t?.name}</strong> type creature
                 </p>
 
                 <div style={{
-                  maxWidth: 240, margin: "0 auto 22px", background: THEME.cardBg,
+                  maxWidth: 280, margin: "0 auto 24px", background: THEME.cardBg,
                   borderRadius: 16, padding: 12, border: `2px solid ${t?.color}15`
                 }}>
                   <img src={petPhoto} alt="Pet" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginBottom: 8 }} />
@@ -518,8 +510,8 @@ export default function Home() {
 
                 <button onClick={generate} style={{
                   background: THEME.orange, color: "#fff", border: "none",
-                  padding: "14px 36px", borderRadius: 14,
-                  fontSize: "0.9rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  padding: "16px 42px", borderRadius: 14,
+                  fontSize: "1rem", fontWeight: 700, fontFamily: THEME.headingFont,
                   boxShadow: `0 4px 20px ${THEME.orange}33`, cursor: "pointer",
                   transition: "all 0.2s"
                 }}>✨ Transform My Pet ✨</button>
@@ -546,7 +538,7 @@ export default function Home() {
                     }} />
                     <ElementOrb type={t?.id} size={78} selected={true} />
                   </div>
-                  <p style={{ fontSize: "1rem", fontFamily: THEME.headingFont, fontWeight: 600, color: t?.color, minHeight: 30 }}>
+                  <p style={{ fontSize: "1.1rem", fontFamily: THEME.headingFont, fontWeight: 600, color: t?.color, minHeight: 30 }}>
                     {LOADING_MESSAGES[t?.id]?.[loadingIdx]}
                   </p>
                   <div style={{ width: 200, height: 4, background: "#eee", borderRadius: 2, margin: "12px auto 0", overflow: "hidden" }}>
@@ -560,24 +552,24 @@ export default function Home() {
             {/* Result */}
             {!generating && generatedImage && (
               <div style={{ textAlign: "center" }} className="fadeIn">
-                <h2 style={{ fontSize: "clamp(1.2rem,3.5vw,1.5rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 4 }}>
+                <h2 style={{ fontSize: "clamp(1.4rem,4vw,1.8rem)", fontFamily: THEME.headingFont, fontWeight: 700, color: THEME.navy, marginBottom: 6 }}>
                   Your {t?.name} Transformation
                 </h2>
-                <p style={{ color: THEME.textMuted, fontSize: "0.82rem", marginBottom: 18 }}>Tap the image to see it full size</p>
+                <p style={{ color: THEME.textMuted, fontSize: "0.9rem", marginBottom: 22 }}>Tap the image to see it full size</p>
 
-                <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginBottom: 22 }}>
+                <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginBottom: 26 }}>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "1px", color: THEME.textLight, marginBottom: 4, fontWeight: 600 }}>Before</div>
-                    <img src={petPhoto} alt="Original" style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 10, opacity: 0.5, border: "2px solid #eee" }} />
+                    <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "1px", color: THEME.textLight, marginBottom: 5, fontWeight: 600 }}>Before</div>
+                    <img src={petPhoto} alt="Original" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 12, opacity: 0.5, border: "2px solid #eee" }} />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <ElementOrb type={t?.id} size={24} selected={true} />
-                    <div style={{ fontSize: "0.9rem", color: THEME.textLight }}>→</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <ElementOrb type={t?.id} size={30} selected={true} />
+                    <div style={{ fontSize: "1.1rem", color: THEME.textLight }}>→</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "1px", color: t?.color, marginBottom: 4, fontWeight: 600 }}>After</div>
+                    <div style={{ fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "1px", color: t?.color, marginBottom: 5, fontWeight: 600 }}>After</div>
                     <div onClick={() => setLightbox(generatedImage)} style={{
-                      position: "relative", width: 180, height: 180, borderRadius: 14, overflow: "hidden",
+                      position: "relative", width: 220, height: 220, borderRadius: 16, overflow: "hidden",
                       border: `3px solid ${t?.color}`, boxShadow: `0 4px 24px ${t?.color}22`, cursor: "pointer"
                     }}>
                       <img src={generatedImage} alt="Transformed" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -592,16 +584,16 @@ export default function Home() {
 
                 <button onClick={buildCard} style={{
                   background: THEME.navy, color: "#fff", border: "none",
-                  padding: "14px 38px", borderRadius: 14,
-                  fontSize: "0.9rem", fontWeight: 700, fontFamily: THEME.headingFont,
+                  padding: "16px 44px", borderRadius: 14,
+                  fontSize: "1rem", fontWeight: 700, fontFamily: THEME.headingFont,
                   boxShadow: `0 4px 20px ${THEME.navy}22`, cursor: "pointer",
                   transition: "all 0.2s"
                 }}>Build Your Card →</button>
 
-                <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-                  <button onClick={generate} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>🔄 Try again ({t?.name})</button>
-                  <button onClick={tryDifferentType} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>🔀 Try different type</button>
-                  <button onClick={reset} style={{ background: "none", border: "none", color: "#d4d4d4", fontSize: "0.72rem", textDecoration: "underline", cursor: "pointer" }}>Start over</button>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
+                  <button onClick={generate} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.8rem", textDecoration: "underline", cursor: "pointer" }}>🔄 Try again ({t?.name})</button>
+                  <button onClick={tryDifferentType} style={{ background: "none", border: "none", color: THEME.textLight, fontSize: "0.8rem", textDecoration: "underline", cursor: "pointer" }}>🔀 Try different type</button>
+                  <button onClick={reset} style={{ background: "none", border: "none", color: "#d4d4d4", fontSize: "0.8rem", textDecoration: "underline", cursor: "pointer" }}>Start over</button>
                 </div>
 
                 {gallery.length > 1 && (
@@ -616,7 +608,7 @@ export default function Home() {
                         const entryType = TYPES.find((tp) => tp.id === entry.type);
                         return (
                           <div key={entry.timestamp} onClick={() => selectFromGallery(idx)} style={{
-                            width: 56, height: 56, borderRadius: 8, overflow: "hidden",
+                            width: 64, height: 64, borderRadius: 10, overflow: "hidden",
                             border: isSelected ? `2px solid ${entryType?.color}` : "2px solid #eee",
                             cursor: "pointer", position: "relative",
                             boxShadow: isSelected ? `0 2px 12px ${entryType?.color}22` : "none",
@@ -669,7 +661,7 @@ export default function Home() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .fadeIn { animation: fadeIn 0.4s ease-out; }
-        .typeGrid { max-width: 400px; margin: 0 auto; }
+        .typeGrid { max-width: 460px; margin: 0 auto; }
         .typeCard:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #ffffff; }
