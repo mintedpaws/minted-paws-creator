@@ -103,7 +103,7 @@ function loadPersistedGallery() {
 }
 
 // ============================================================
-// Orb component (unchanged — uses real orb images with gradient fallback)
+// Orb component
 // ============================================================
 function ElementOrb({ type, size = 72, selected, onClick }) {
   const tp = TYPES.find((t) => t.id === type);
@@ -124,7 +124,7 @@ function ElementOrb({ type, size = 72, selected, onClick }) {
 }
 
 // ============================================================
-// Floating particles (kept but adapted for light theme)
+// Floating particles
 // ============================================================
 function FloatingParticles({ color, active }) {
   const canvasRef = useRef(null);
@@ -292,9 +292,9 @@ export default function Home() {
     if (matchType) { setSelectedType(matchType); window.history.replaceState(null, "", `?type=${matchType.id}`); }
   };
 
-  // ---- Proceed to Shopify ----
+  // ---- Proceed to Shopify (FIXED) ----
   const buildCard = () => {
-    window.location.href = `https://mintedpaws.co/products/${selectedType.id}?image=${encodeURIComponent(generatedImage)}`;
+    window.location.href = `https://mintedpaws.co/products/minted-paws-evolution-card?type=${selectedType.id}&image=${encodeURIComponent(generatedImage)}`;
   };
 
   // ---- Reset ----
@@ -330,7 +330,6 @@ export default function Home() {
         const sn = i + 1;
         const done = step > sn;
         const active = step === sn;
-        const inactive = step < sn;
         return (
           <div key={label} style={{ display: "flex", alignItems: "center" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
